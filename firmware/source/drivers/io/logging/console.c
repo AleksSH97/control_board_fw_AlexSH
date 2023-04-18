@@ -112,14 +112,8 @@ void ConsoleInit(void)
  */
 void ConsoleStart(void)
 {
-    if (MicrophoneGetActivate()) {
-        MicrophoneSetActivate(MICROPHONE_OFF);
-    }
-
-    AccelerometerSetStatus(ACCELERO_IDLE);
     IoSystemClearRxQueue();
     LogClearQueues();
-    MicrophoneVisualizationClearQueue();
     ConsoleInit();
 }
 /******************************************************************************/
@@ -155,7 +149,7 @@ void prvConsolePrint(microrl_t *microrl_ptr, const char *str)
  */
 char ConsoleGetChar(void)
 {
-   return (char)data_uart.console_input;
+//   return (char)data_uart.console_input;
 }
 /******************************************************************************/
 
@@ -279,120 +273,6 @@ int ConsoleExecute(microrl_t *microrl_ptr, int argc, const char * const *argv)
 
 
 /**
- * \brief           Buff menu in console
- * \param[in]
- */
-int ConsoleBuff(microrl_t *microrl_ptr, int argc, const char * const *argv)
-{
-    int i = 0;
-
-    while (i < argc) {
-        if (strcmp(argv[i], _CMD_RESET) == 0) {
-            lwrb_reset(&debug_uart.lwrb_rx);
-            prvConsolePrint(microrl_ptr, "\tBuffer successfully reseted" _ENDLINE_SEQ);
-        }
-        else if (strcmp(argv[i], _CMD_FREE) == 0) {
-            lwrb_free(&debug_uart.lwrb_rx);
-            prvConsolePrint(microrl_ptr, "\tBuffer successfully free" _ENDLINE_SEQ);
-        }
-        else if (strcmp(argv[i], _CMD_CHECK) == 0) {
-            prvConsolePrint(microrl_ptr, "\tHere's your buffer:  ");
-            // TODO insert buffer to show
-            prvConsolePrint(microrl_ptr, "\t " _ENDLINE_SEQ);
-        }
-        else if (strcmp(argv[i], _CMD_BACK) == 0) {
-            prvConsolePrint(microrl_ptr, "\tBack to main menu" _ENDLINE_SEQ _ENDLINE_SEQ _ENDLINE_SEQ);
-            ConsolePrintHelp(microrl_ptr);
-            microrl_set_execute_callback(microrl_ptr, ConsoleExecuteMain);
-        }
-        else {
-            prvConsolePrint(microrl_ptr, "\tUndefined command" _ENDLINE_SEQ);
-            IndicationLedError();
-            ConsolePrintBuff(microrl_ptr);
-        }
-        i++;
-    }
-
-    return 0;
-}
-/******************************************************************************/
-
-
-
-
-/**
- * \brief           Visualizer menu in console
- * \param[in]
- */
-int ConsoleAudio(microrl_t *microrl_ptr, int argc, const char * const *argv)
-{
-    int i = 0;
-
-    while (i < argc) {
-        if (strcmp(argv[i], _CMD_ENABLE) == 0) {
-
-            if (!MicrophoneGetActivate()) {
-                MicrophoneSetActivate(MICROPHONE_ON);
-            }
-
-            AudioSetStatus(AUDIO_INIT);
-            IoSystemSetMode(IO_LOGS);
-        }
-        else if (strcmp(argv[i], _CMD_BACK) == 0) {
-            prvConsolePrint(microrl_ptr, "\tBack to main menu" _ENDLINE_SEQ _ENDLINE_SEQ _ENDLINE_SEQ);
-            ConsolePrintHelp(microrl_ptr);
-            microrl_set_execute_callback(microrl_ptr, ConsoleExecuteMain);
-        }
-        else {
-            prvConsolePrint(microrl_ptr, "\tUndefined command" _ENDLINE_SEQ);
-            IndicationLedError();
-            ConsolePrintVisualizer(microrl_ptr);
-        }
-        i++;
-    }
-
-        return 0;
-}
-/******************************************************************************/
-
-
-
-
-/**
- * \brief           Accelerometer menu in console
- * \param[in]
- */
-int ConsoleAccelerometer(microrl_t *microrl_ptr, int argc, const char * const *argv)
-{
-    int i = 0;
-
-    while (i < argc) {
-        if (strcmp(argv[i], _CMD_ENABLE) == 0) {
-            AccelerometerSetStatus(ACCELERO_XYZ);
-            IoSystemSetMode(IO_LOGS);
-        }
-        else if (strcmp(argv[i], _CMD_BACK) == 0) {
-            prvConsolePrint(microrl_ptr, "\tBack to main menu" _ENDLINE_SEQ _ENDLINE_SEQ _ENDLINE_SEQ);
-            ConsolePrintHelp(microrl_ptr);
-            AccelerometerSetStatus(ACCELERO_IDLE);
-            microrl_set_execute_callback(microrl_ptr, ConsoleExecuteMain);
-        }
-        else {
-            prvConsolePrint(microrl_ptr, "\tUndefined command" _ENDLINE_SEQ);
-            IndicationLedError();
-            ConsolePrintAccelerometer(microrl_ptr);
-        }
-        i++;
-    }
-
-        return 0;
-}
-/******************************************************************************/
-
-
-
-
-/**
  * \brief           Clear console screen fn extern
  */
 void ConsoleClearScreenSetup(void)
@@ -436,8 +316,6 @@ void prvConsoleClearScreenSimple(microrl_t *microrl_ptr)
  */
 void ConsoleSigint(microrl_t *microrl_ptr)
 {
-    MicrophoneSetActivate(MICROPHONE_OFF);
-    AccelerometerSetStatus(ACCELERO_IDLE);
     microrl_set_execute_callback(microrl_ptr, ConsoleAudio);
     prvConsoleClearScreen(microrl_ptr);
     ConsolePrintVisualizer(microrl_ptr);

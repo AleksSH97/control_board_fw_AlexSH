@@ -23,12 +23,10 @@
 #include <stdint.h>
 #include <stdbool.h>
 
-#include "main.h"
 #include "tim.h"
 #include "stm32f4xx_hal.h"
 #include "log.h"
 #include "indication.h"
-#include "uart.h"
 
 #ifdef __cplusplus
 extern "C" {

@@ -22,7 +22,6 @@
 /******************************************************************************/
 #include <stdbool.h>
 
-#include "main.h"
 #include "log.h"
 #include "led.h"
 #include "stm32f4xx_hal.h"

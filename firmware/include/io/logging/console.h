@@ -24,10 +24,8 @@
 #include <stdio.h>
 #include <stdbool.h>
 
-#include "uart.h"
 #include "log.h"
 #include "microrl.h"
-#include "accelero_spi.h"
 #include "microrl_config.h"
 
 #ifdef __cplusplus

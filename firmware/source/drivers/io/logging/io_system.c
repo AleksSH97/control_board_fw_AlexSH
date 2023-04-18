@@ -121,10 +121,10 @@ void IoSystemRxTask(void *argument)
     {
         uint8_t data = 0x00;
 
-        if (lwrb_get_free(&data_uart.lwrb_rx) != 0) {
-            lwrb_read(&data_uart.lwrb_rx, &data, sizeof(char));
-            osMessageQueuePut(uartRxQueueHandle, &data, 0, 100);
-        }
+//        if (lwrb_get_free(&data_uart.lwrb_rx) != 0) {
+//            lwrb_read(&data_uart.lwrb_rx, &data, sizeof(char));
+//            osMessageQueuePut(uartRxQueueHandle, &data, 0, 100);
+//        }
 
         if (!(IoSystemGetByte(&rx, 100))) {
             continue;
@@ -163,7 +163,7 @@ void IoSystemTxTask(void *argument)
                 }
                 IoSystemPutDataToTxBuffer(&msg, sizeof(uint8_t));
             }
-            UARTSendByteTxBuff(&huart3);
+//            UARTSendByteTxBuff(&huart3);
         }
         else if (IoSystemGetMode() == IO_LOGS) {
             if (!(IoSystemIsTxBufferFull())) {
@@ -176,7 +176,7 @@ void IoSystemTxTask(void *argument)
                 }
                 IoSystemPutDataToTxBuffer(&msg, sizeof(uint8_t));
             }
-            UARTSendByteTxBuff(&huart3);
+//            UARTSendByteTxBuff(&huart3);
         }
     }
 
@@ -280,7 +280,7 @@ void IoSystemClearRxQueue(void)
  */
 bool IoSystemIsTxBufferFull(void)
 {
-    return (lwrb_get_free(&data_uart.lwrb_tx) == 0 ? true : false);
+//    return (lwrb_get_free(&data_uart.lwrb_tx) == 0 ? true : false);
 }
 /******************************************************************************/
 
@@ -292,11 +292,11 @@ bool IoSystemIsTxBufferFull(void)
  */
 bool IoSystemPutDataToTxBuffer(const void* data, size_t len)
 {
-    if (lwrb_get_free(&data_uart.lwrb_tx) == 0) {
-        return false;
-    }
+//    if (lwrb_get_free(&data_uart.lwrb_tx) == 0) {
+//        return false;
+//    }
 
-    return (lwrb_write(&data_uart.lwrb_tx, data, len) > 0 ? true : false);
+//    return (lwrb_write(&data_uart.lwrb_tx, data, len) > 0 ? true : false);
 }
 /******************************************************************************/
 
@@ -308,10 +308,10 @@ bool IoSystemPutDataToTxBuffer(const void* data, size_t len)
  */
 bool IoSystemPutDataToRxBuffer(const void* data, size_t len)
 {
-    if (lwrb_get_free(&data_uart.lwrb_rx) == 0) {
-        return false;
-    }
+//    if (lwrb_get_free(&data_uart.lwrb_rx) == 0) {
+//        return false;
+//    }
 
-    return (lwrb_write(&data_uart.lwrb_rx, data, len) > 0 ? true : false);
+//    return (lwrb_write(&data_uart.lwrb_rx, data, len) > 0 ? true : false);
 }
 /******************************************************************************/
