@@ -45,37 +45,47 @@ void IndicationInit(void)
 {
 	mculed_ctrl_t fns = {0};
 
-	GPIO_InitTypeDef GPIO_InitStruct = {0};
+  LL_GPIO_ResetOutputPin(LED_RD_GPIO_Port, LED_RD_Pin);
+  LL_GPIO_ResetOutputPin(LED_YL_GPIO_Port, LED_YL_Pin);
+  LL_GPIO_ResetOutputPin(LED_GR_GPIO_Port, LED_GR_Pin);
 
-	__HAL_RCC_GPIOD_CLK_ENABLE();
-    __HAL_RCC_GPIOH_CLK_ENABLE();
-    __HAL_RCC_GPIOA_CLK_ENABLE();
+  LL_GPIO_InitTypeDef GPIO_InitStruct;
 
-	HAL_GPIO_WritePin(GPIOD, LED_LEFT_Pin|LED_TOP_Pin|LED_RIGHT_Pin|LED_BOTTOM_Pin, GPIO_PIN_RESET);
+  GPIO_InitStruct.Pin = LED_RD_Pin;
+  GPIO_InitStruct.Mode = LL_GPIO_MODE_OUTPUT;
+  GPIO_InitStruct.Speed = LL_GPIO_SPEED_FREQ_LOW;
+  GPIO_InitStruct.OutputType = LL_GPIO_OUTPUT_PUSHPULL;
+  GPIO_InitStruct.Pull = LL_GPIO_PULL_NO;
+  LL_GPIO_Init(LED_RD_GPIO_Port, &GPIO_InitStruct);
 
-	GPIO_InitStruct.Pin = LED_LEFT_Pin|LED_TOP_Pin|LED_RIGHT_Pin|LED_BOTTOM_Pin;
-	GPIO_InitStruct.Mode = GPIO_MODE_OUTPUT_PP;
-	GPIO_InitStruct.Pull = GPIO_NOPULL;
-	GPIO_InitStruct.Speed = GPIO_SPEED_FREQ_LOW;
-	HAL_GPIO_Init(GPIOD, &GPIO_InitStruct);
+  GPIO_InitStruct.Pin = LED_YL_Pin;
+  GPIO_InitStruct.Mode = LL_GPIO_MODE_OUTPUT;
+  GPIO_InitStruct.Speed = LL_GPIO_SPEED_FREQ_LOW;
+  GPIO_InitStruct.OutputType = LL_GPIO_OUTPUT_PUSHPULL;
+  GPIO_InitStruct.Pull = LL_GPIO_PULL_NO;
+  LL_GPIO_Init(LED_YL_GPIO_Port, &GPIO_InitStruct);
 
-	mculed[LED_TOP].hardware.port    =    (uint32_t) LED_TOP_GPIO_Port;
-	mculed[LED_TOP].hardware.pin     =    (uint32_t) LED_TOP_Pin;
-	mculed[LED_LEFT].hardware.port   =    (uint32_t) LED_LEFT_GPIO_Port;
-	mculed[LED_LEFT].hardware.pin    =    (uint32_t) LED_LEFT_Pin;
-	mculed[LED_BOTTOM].hardware.port =    (uint32_t) LED_BOTTOM_GPIO_Port;
-	mculed[LED_BOTTOM].hardware.pin  =    (uint32_t) LED_BOTTOM_Pin;
-	mculed[LED_RIGHT].hardware.port  =    (uint32_t) LED_RIGHT_GPIO_Port;
-	mculed[LED_RIGHT].hardware.pin   =    (uint32_t) LED_RIGHT_Pin;
+  GPIO_InitStruct.Pin = LED_GR_Pin;
+  GPIO_InitStruct.Mode = LL_GPIO_MODE_OUTPUT;
+  GPIO_InitStruct.Speed = LL_GPIO_SPEED_FREQ_LOW;
+  GPIO_InitStruct.OutputType = LL_GPIO_OUTPUT_PUSHPULL;
+  GPIO_InitStruct.Pull = LL_GPIO_PULL_NO;
+  LL_GPIO_Init(LED_GR_GPIO_Port, &GPIO_InitStruct);
+
+	mculed[LED_RD].hardware.port   =    (uint32_t) LED_RD_GPIO_Port;
+	mculed[LED_RD].hardware.pin    =    (uint32_t) LED_RD_Pin;
+	mculed[LED_YL].hardware.port   =    (uint32_t) LED_YL_GPIO_Port;
+	mculed[LED_YL].hardware.pin    =    (uint32_t) LED_YL_Pin;
+	mculed[LED_GR].hardware.port   =    (uint32_t) LED_GR_GPIO_Port;
+	mculed[LED_GR].hardware.pin    =    (uint32_t) LED_GR_Pin;
 
 	fns.turn_on = IndicationLedTurnOn;
 	fns.turn_off = IndicationLedTurnOff;
 	fns.toggle = IndicationLedToggle;
 
-	McuLedInit(&mculed[LED_TOP], &fns);
-	McuLedInit(&mculed[LED_LEFT], &fns);
-	McuLedInit(&mculed[LED_BOTTOM], &fns);
-	McuLedInit(&mculed[LED_RIGHT], &fns);
+	McuLedInit(&mculed[LED_RD], &fns);
+	McuLedInit(&mculed[LED_YL], &fns);
+	McuLedInit(&mculed[LED_GR], &fns);
 }
 /******************************************************************************/
 
@@ -286,30 +296,18 @@ void prvIndicationLedTopSetup(mculed_t *led_ptr, int led_index)
     led_ptr->setup.iterations_num = INDICATION_LED_BUTTON_NUM;
 
     switch (led_index) {
-        case LED_TOP:
+        case LED_RD:
             led_ptr->hardware.mode = MCULED_ON_STATE;
             led_ptr->setup.on_ms = (INDICATION_LED_SPEED_VERY_FAST * LED_TIME_ON);
             led_ptr->setup.off_ms = (INDICATION_LED_SPEED_VERY_FAST * LED_TIME_OFF);
             led_ptr->setup.delay_ms = ZERO_MS;
             break;
-//        case LED_LEFT:
-//            led_ptr->hardware.mode = MCULED_OFF_STATE;
-//            led_ptr->setup.on_ms = ZERO_MS;
-//            led_ptr->setup.delay_ms = ZERO_MS;
-//            led_ptr->setup.off_ms = ZERO_MS;
-//            break;
-        case LED_BOTTOM:
+        case LED_GR:
             led_ptr->hardware.mode = MCULED_OFF_STATE;
             led_ptr->setup.on_ms = ZERO_MS;
             led_ptr->setup.off_ms = ZERO_MS;
             led_ptr->setup.delay_ms = ZERO_MS;
             break;
-//        case LED_RIGHT:
-//            led_ptr->hardware.mode = MCULED_OFF_STATE;
-//            led_ptr->setup.on_ms = ZERO_MS;
-//            led_ptr->setup.delay_ms = ZERO_MS;
-//            led_ptr->setup.off_ms = ZERO_MS;
-//            break;
         default:
             break;
     }
@@ -330,30 +328,18 @@ void prvIndicationLedBottomSetup(mculed_t *led_ptr, int led_index)
     led_ptr->setup.iterations_num = INDICATION_LED_BUTTON_NUM;
 
     switch (led_index) {
-        case LED_TOP:
+        case LED_RD:
             led_ptr->hardware.mode = MCULED_OFF_STATE;
             led_ptr->setup.on_ms = ZERO_MS;
             led_ptr->setup.delay_ms = ZERO_MS;
             led_ptr->setup.off_ms = ZERO_MS;
             break;
-//        case LED_LEFT:
-//            led_ptr->hardware.mode = MCULED_OFF_STATE;
-//            led_ptr->setup.on_ms = ZERO_MS;
-//            led_ptr->setup.delay_ms = ZERO_MS;
-//            led_ptr->setup.off_ms = ZERO_MS;
-//            break;
-        case LED_BOTTOM:
+        case LED_GR:
             led_ptr->hardware.mode = MCULED_ON_STATE;
             led_ptr->setup.on_ms = (INDICATION_LED_SPEED_VERY_FAST * LED_TIME_ON);
             led_ptr->setup.off_ms = (INDICATION_LED_SPEED_VERY_FAST * LED_TIME_OFF);
             led_ptr->setup.delay_ms = ZERO_MS;
             break;
-//        case LED_RIGHT:
-//            led_ptr->hardware.mode = MCULED_OFF_STATE;
-//            led_ptr->setup.on_ms = ZERO_MS;
-//            led_ptr->setup.delay_ms = ZERO_MS;
-//            led_ptr->setup.off_ms = ZERO_MS;
-//            break;
         default:
             break;
     }
@@ -375,28 +361,10 @@ void prvIndicationLedLeftSetup(mculed_t *led_ptr, int led_index)
     led_ptr->setup.iterations_num = INDICATION_LED_BUTTON_NUM;
 
     switch (led_index) {
-//        case LED_TOP:
-//            led_ptr->hardware.mode = MCULED_OFF_STATE;
-//            led_ptr->setup.on_ms = ZERO_MS;
-//            led_ptr->setup.delay_ms = ZERO_MS;
-//            led_ptr->setup.off_ms = ZERO_MS;
-//            break;
-        case LED_LEFT:
+        case LED_YL:
             led_ptr->hardware.mode = MCULED_ON_STATE;
             led_ptr->setup.on_ms = (INDICATION_LED_SPEED_VERY_FAST * LED_TIME_ON);
             led_ptr->setup.delay_ms = (INDICATION_LED_SPEED_VERY_FAST * LED_TIME_ON);
-            led_ptr->setup.off_ms = ZERO_MS;
-            break;
-//        case LED_BOTTOM:
-//            led_ptr->hardware.mode = MCULED_OFF_STATE;
-//            led_ptr->setup.on_ms = ZERO_MS;
-//            led_ptr->setup.delay_ms = ZERO_MS;
-//            led_ptr->setup.off_ms = ZERO_MS;
-//            break;
-        case LED_RIGHT:
-            led_ptr->hardware.mode = MCULED_OFF_STATE;
-            led_ptr->setup.on_ms = ZERO_MS;
-            led_ptr->setup.delay_ms = ZERO_MS;
             led_ptr->setup.off_ms = ZERO_MS;
             break;
         default:
@@ -417,31 +385,13 @@ void prvIndicationLedLeftSetup(mculed_t *led_ptr, int led_index)
  */
 void prvIndicationLedRightSetup(mculed_t *led_ptr, int led_index)
 {
-    led_ptr->setup.iterations_num = INDICATION_LED_BUTTON_NUM;
+    led_ptr->setup.iterations_num = INDICATION_LED_LOADING_NUM;
 
     switch (led_index) {
-//        case LED_TOP:
-//            led_ptr->hardware.mode = MCULED_OFF_STATE;
-//            led_ptr->setup.on_ms = ZERO_MS;
-//            led_ptr->setup.delay_ms = ZERO_MS;
-//            led_ptr->setup.off_ms = ZERO_MS;
-//            break;
-        case LED_LEFT:
+        case LED_YL:
             led_ptr->hardware.mode = MCULED_OFF_STATE;
             led_ptr->setup.on_ms = ZERO_MS;
             led_ptr->setup.delay_ms = ZERO_MS;
-            led_ptr->setup.off_ms = ZERO_MS;
-            break;
-//        case LED_BOTTOM:
-//            led_ptr->hardware.mode = MCULED_OFF_STATE;
-//            led_ptr->setup.on_ms = ZERO_MS;
-//            led_ptr->setup.delay_ms = ZERO_MS;
-//            led_ptr->setup.off_ms = ZERO_MS;
-//            break;
-        case LED_RIGHT:
-            led_ptr->hardware.mode = MCULED_ON_STATE;
-            led_ptr->setup.on_ms = (INDICATION_LED_SPEED_VERY_FAST * LED_TIME_ON);
-            led_ptr->setup.delay_ms = (INDICATION_LED_SPEED_VERY_FAST * LED_TIME_ON);
             led_ptr->setup.off_ms = ZERO_MS;
             break;
         default:
@@ -466,25 +416,20 @@ void prvIndicationLedLoadingSetup(mculed_t *led_ptr, int led_index)
 	led_ptr->setup.iterations_num = INDICATION_LED_LOADING_NUM;
 
 	switch (led_index) {
-		case LED_TOP:
-			led_ptr->setup.on_ms = (INDICATION_LED_SPEED_VERY_FAST * LED_TOP_TIME_ON);
-			led_ptr->setup.off_ms = (INDICATION_LED_SPEED_VERY_FAST * LED_TOP_TIME_OFF);
-			led_ptr->setup.delay_ms = (INDICATION_LED_SPEED_VERY_FAST * (LED_RIGHT_TIME_OFF - LED_TOP_TIME_ON));
+		case LED_RD:
+			led_ptr->setup.on_ms = (INDICATION_LED_SPEED_VERY_FAST * LED_RD_TIME_ON);
+			led_ptr->setup.off_ms = (INDICATION_LED_SPEED_VERY_FAST * LED_RD_TIME_OFF);
+			led_ptr->setup.delay_ms = (INDICATION_LED_SPEED_VERY_FAST * (LED_RIGHT_TIME_OFF - LED_RD_TIME_ON));
 			break;
-		case LED_LEFT:
-			led_ptr->setup.on_ms = (INDICATION_LED_SPEED_VERY_FAST * LED_LEFT_TIME_ON);
-			led_ptr->setup.off_ms = (INDICATION_LED_SPEED_VERY_FAST * LED_LEFT_TIME_OFF);
-			led_ptr->setup.delay_ms = (INDICATION_LED_SPEED_VERY_FAST * (LED_RIGHT_TIME_OFF - LED_LEFT_TIME_ON));
+		case LED_YL:
+			led_ptr->setup.on_ms = (INDICATION_LED_SPEED_VERY_FAST * LED_YL_TIME_ON);
+			led_ptr->setup.off_ms = (INDICATION_LED_SPEED_VERY_FAST * LED_YL_TIME_OFF);
+			led_ptr->setup.delay_ms = (INDICATION_LED_SPEED_VERY_FAST * (LED_RIGHT_TIME_OFF - LED_YL_TIME_ON));
 			break;
-		case LED_BOTTOM:
-			led_ptr->setup.on_ms = (INDICATION_LED_SPEED_VERY_FAST * LED_BOTTOM_TIME_ON);
-			led_ptr->setup.off_ms = (INDICATION_LED_SPEED_VERY_FAST * LED_BOTTOM_TIME_OFF);
-			led_ptr->setup.delay_ms = (INDICATION_LED_SPEED_VERY_FAST * (LED_RIGHT_TIME_OFF - LED_BOTTOM_TIME_ON));
-			break;
-		case LED_RIGHT:
-			led_ptr->setup.on_ms = (INDICATION_LED_SPEED_VERY_FAST * LED_RIGHT_TIME_ON);
-			led_ptr->setup.off_ms = (INDICATION_LED_SPEED_VERY_FAST * LED_RIGHT_TIME_OFF);
-			led_ptr->setup.delay_ms = (INDICATION_LED_SPEED_VERY_FAST * (LED_RIGHT_TIME_OFF - LED_RIGHT_TIME_ON));
+		case LED_GR:
+			led_ptr->setup.on_ms = (INDICATION_LED_SPEED_VERY_FAST * LED_GR_TIME_ON);
+			led_ptr->setup.off_ms = (INDICATION_LED_SPEED_VERY_FAST * LED_GR_TIME_OFF);
+			led_ptr->setup.delay_ms = (INDICATION_LED_SPEED_VERY_FAST * (LED_RIGHT_TIME_OFF - LED_GR_TIME_ON));
 			break;
 		default:
 			break;
@@ -505,24 +450,19 @@ void prvIndicationLedLoadingSetup(mculed_t *led_ptr, int led_index)
 void prvIndicationLedButtonSetup(mculed_t *led_ptr, int led_index)
 {
 	switch (led_index) {
-		case LED_TOP:
+		case LED_RD:
 			led_ptr->hardware.mode = MCULED_ON_STATE;
 			led_ptr->setup.iterations_num = INDICATION_LED_BUTTON_NUM;
-			led_ptr->setup.on_ms = (INDICATION_LED_SPEED_VERY_FAST * LED_TOP_TIME_ON);
-			led_ptr->setup.off_ms = (INDICATION_LED_SPEED_VERY_FAST * LED_TOP_TIME_OFF);
+			led_ptr->setup.on_ms = (INDICATION_LED_SPEED_VERY_FAST * LED_RD_TIME_ON);
+			led_ptr->setup.off_ms = (INDICATION_LED_SPEED_VERY_FAST * LED_RD_TIME_OFF);
 			led_ptr->setup.delay_ms = ZERO_MS;
 			break;
-		case LED_LEFT:
+		case LED_YL:
 			led_ptr->hardware.mode = MCULED_OFF_STATE;
 			led_ptr->setup.on_ms = ZERO_MS;
 			led_ptr->setup.off_ms = ZERO_MS;
 			break;
-		case LED_BOTTOM:
-			led_ptr->hardware.mode = MCULED_OFF_STATE;
-			led_ptr->setup.on_ms = ZERO_MS;
-			led_ptr->setup.off_ms = ZERO_MS;
-			break;
-		case LED_RIGHT:
+		case LED_GR:
 			led_ptr->hardware.mode = MCULED_OFF_STATE;
 			led_ptr->setup.on_ms = ZERO_MS;
 			led_ptr->setup.off_ms = ZERO_MS;
@@ -546,27 +486,20 @@ void prvIndicationLedButtonSetup(mculed_t *led_ptr, int led_index)
 void prvIndicationLedButtonHoldSetup(mculed_t *led_ptr, int led_index)
 {
 	switch (led_index) {
-		case LED_TOP:
+		case LED_RD:
 			led_ptr->hardware.mode = MCULED_OFF_STATE;
 			led_ptr->setup.on_ms = ZERO_MS;
 			led_ptr->setup.off_ms = ZERO_MS;
 			led_ptr->setup.delay_ms = ZERO_MS;
 			break;
-		case LED_LEFT:
+		case LED_YL:
 			led_ptr->hardware.mode = MCULED_ON_STATE;
 			led_ptr->setup.iterations_num = INDICATION_LED_BUTTON_NUM;
 			led_ptr->setup.on_ms = (INDICATION_LED_SPEED_VERY_FAST * LED_TIME_ON);
 			led_ptr->setup.off_ms = (INDICATION_LED_SPEED_VERY_FAST * LED_TIME_OFF);
 			led_ptr->setup.delay_ms = ZERO_MS;
 			break;
-		case LED_BOTTOM:
-			led_ptr->hardware.mode = MCULED_ON_STATE;
-			led_ptr->setup.iterations_num = INDICATION_LED_BUTTON_NUM;
-			led_ptr->setup.on_ms = (INDICATION_LED_SPEED_VERY_FAST * LED_TIME_ON);
-			led_ptr->setup.off_ms = (INDICATION_LED_SPEED_VERY_FAST * LED_TIME_OFF);
-			led_ptr->setup.delay_ms = ZERO_MS;
-			break;
-		case LED_RIGHT:
+		case LED_GR:
 			led_ptr->hardware.mode = MCULED_ON_STATE;
 			led_ptr->setup.iterations_num = INDICATION_LED_BUTTON_NUM;
 			led_ptr->setup.on_ms = (INDICATION_LED_SPEED_VERY_FAST * LED_TIME_ON);
@@ -592,26 +525,20 @@ void prvIndicationLedButtonHoldSetup(mculed_t *led_ptr, int led_index)
 void prvIndicationLedButtonDoubleClickSetup(mculed_t *led_ptr, int led_index)
 {
 	switch (led_index) {
-		case LED_TOP:
+		case LED_RD:
 			led_ptr->hardware.mode = MCULED_OFF_STATE;
 			led_ptr->setup.on_ms = ZERO_MS;
 			led_ptr->setup.off_ms = ZERO_MS;
 			led_ptr->setup.delay_ms = ZERO_MS;
 			break;
-		case LED_LEFT:
+		case LED_YL:
 			led_ptr->hardware.mode = MCULED_ON_STATE;
 			led_ptr->setup.iterations_num = INDICATION_LED_BUTTON_NUM;
 			led_ptr->setup.on_ms = (INDICATION_LED_SPEED_VERY_FAST * LED_TIME_ON);
 			led_ptr->setup.off_ms = (INDICATION_LED_SPEED_VERY_FAST * LED_TIME_OFF);
 			led_ptr->setup.delay_ms = ZERO_MS;
 			break;
-		case LED_BOTTOM:
-			led_ptr->hardware.mode = MCULED_OFF_STATE;
-			led_ptr->setup.on_ms = ZERO_MS;
-			led_ptr->setup.off_ms = ZERO_MS;
-			led_ptr->setup.delay_ms = ZERO_MS;
-			break;
-		case LED_RIGHT:
+		case LED_GR:
 			led_ptr->hardware.mode = MCULED_OFF_STATE;
 			led_ptr->setup.on_ms = ZERO_MS;
 			led_ptr->setup.off_ms = ZERO_MS;

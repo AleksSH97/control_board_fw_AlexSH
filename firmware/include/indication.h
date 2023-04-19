@@ -25,6 +25,7 @@
 #include "log.h"
 #include "led.h"
 #include "stm32f4xx_hal.h"
+#include "stm32f4xx_ll_gpio.h"
 
 
 /******************************************************************************/
@@ -37,39 +38,36 @@
 
 #define N_LED                          (4u)
 
-#define LED_LEFT_Pin                   GPIO_PIN_12
-#define LED_LEFT_GPIO_Port             GPIOD
-#define LED_TOP_Pin                    GPIO_PIN_13
-#define LED_TOP_GPIO_Port              GPIOD
-#define LED_RIGHT_Pin                  GPIO_PIN_14
-#define LED_RIGHT_GPIO_Port            GPIOD
-#define LED_BOTTOM_Pin                 GPIO_PIN_15
-#define LED_BOTTOM_GPIO_Port           GPIOD
+#define LED_RD_Pin                   LL_GPIO_PIN_13
+#define LED_RD_GPIO_Port             GPIOC
+#define LED_YL_Pin                   LL_GPIO_PIN_14
+#define LED_YL_GPIO_Port             GPIOC
+#define LED_GR_Pin                   LL_GPIO_PIN_15
+#define LED_GR_GPIO_Port             GPIOC
 
-#define ZERO_MS                        (0u)
+#define ZERO_MS                      (0u)
 
-#define LED_TOP_TIME_ON                (100u)
-#define LED_LEFT_TIME_ON               (130u)
-#define LED_BOTTOM_TIME_ON             (160u)
-#define LED_RIGHT_TIME_ON              (190u)
+#define LED_RD_TIME_ON               (100u)
+#define LED_YL_TIME_ON               (130u)
+#define LED_GR_TIME_ON               (160u)
+#define LED_RIGHT_TIME_ON            (190u)
 
-#define LED_TOP_TIME_OFF               (130u)
-#define LED_LEFT_TIME_OFF              (160u)
-#define LED_BOTTOM_TIME_OFF            (190u)
-#define LED_RIGHT_TIME_OFF             (220u)
+#define LED_RD_TIME_OFF              (130u)
+#define LED_YL_TIME_OFF              (160u)
+#define LED_GR_TIME_OFF              (190u)
+#define LED_RIGHT_TIME_OFF           (220u)
 
-#define LED_TIME_ON                    (2000u)
-#define LED_TIME_OFF                   (6000u)
+#define LED_TIME_ON                  (2000u)
+#define LED_TIME_OFF                 (6000u)
 
 
 /******************************************************************************/
 /* Public variables --------------------------------------------------------- */
 /******************************************************************************/
 enum indication_led_id {
-	LED_TOP = 0,
-	LED_LEFT,
-	LED_BOTTOM,
-	LED_RIGHT
+	LED_RD = 0,
+	LED_YL,
+	LED_GR,
 };
 
 enum indication_led_speed {
