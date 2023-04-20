@@ -27,6 +27,7 @@
 #include "log.h"
 #include "FreeRTOS.h"
 #include "task.h"
+#include "io_uart.h"
 
 #include "lwprintf/lwprintf.h"
 

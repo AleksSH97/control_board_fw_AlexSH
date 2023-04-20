@@ -35,19 +35,19 @@ osThreadId_t TxTaskHandle;
 osMessageQueueId_t uartRxQueueHandle;
 
 const osThreadAttr_t RxTask_attributes = {
-        .name = "RxTask",
-        .stack_size = 128 * 4,
-        .priority = (osPriority_t) osPriorityNormal,
+      .name = "RxTask",
+      .stack_size = 128 * 4,
+      .priority = (osPriority_t) osPriorityNormal,
 };
 
 const osThreadAttr_t TxTask_attributes = {
-        .name = "TxTask",
-        .stack_size = 128 * 4,
-        .priority = (osPriority_t) osPriorityNormal,
+      .name = "TxTask",
+      .stack_size = 128 * 4,
+      .priority = (osPriority_t) osPriorityNormal,
 };
 
 const osMessageQueueAttr_t uartRxQueueAttributes = {
-        .name = "uartRxQueue",
+      .name = "uartRxQueue",
 };
 
 
@@ -70,11 +70,11 @@ static void prvIoConsoleRxHandler(char rx);
  */
 void IoSystemInit(void)
 {
-    IoSystemSetMode(IO_LOGS);
+  IoSystemSetMode(IO_LOGS);
 
-    RxTaskHandle = osThreadNew(IoSystemRxTask, NULL, &RxTask_attributes);
-    TxTaskHandle = osThreadNew(IoSystemTxTask, NULL, &TxTask_attributes);
-    uartRxQueueHandle = osMessageQueueNew(512, sizeof(uint8_t), &uartRxQueueAttributes);
+  RxTaskHandle = osThreadNew(IoSystemRxTask, NULL, &RxTask_attributes);
+  TxTaskHandle = osThreadNew(IoSystemTxTask, NULL, &TxTask_attributes);
+  uartRxQueueHandle = osMessageQueueNew(IOUART_RX_QUEUE_SIZE, sizeof(uint8_t), &uartRxQueueAttributes);
 }
 /******************************************************************************/
 
@@ -86,7 +86,7 @@ void IoSystemInit(void)
  */
 void IoSystemSetMode(IOSYS_MODE mode)
 {
-    io_system.mode = mode;
+  io_system.mode = mode;
 }
 /******************************************************************************/
 
@@ -98,7 +98,7 @@ void IoSystemSetMode(IOSYS_MODE mode)
  */
 IOSYS_MODE IoSystemGetMode(void)
 {
-    return io_system.mode;
+  return io_system.mode;
 }
 /******************************************************************************/
 
@@ -110,35 +110,33 @@ IOSYS_MODE IoSystemGetMode(void)
  */
 void IoSystemRxTask(void *argument)
 {
-    uint8_t rx = 0x00;
+  uint8_t rx = 0x00;
 
-    UARTAllInit();
-    LogInit();
-    ConsoleInit();
-    LogPrintWelcomeMsg();
+  UARTAllInit();
+  LogInit();
+  ConsoleInit();
+  LogPrintWelcomeMsg();
 
-    for(;;)
-    {
-        uint8_t data = 0x00;
+  for(;;)
+  {
+    uint8_t data = 0x00;
 
-//        if (lwrb_get_free(&data_uart.lwrb_rx) != 0) {
-//            lwrb_read(&data_uart.lwrb_rx, &data, sizeof(char));
-//            osMessageQueuePut(uartRxQueueHandle, &data, 0, 100);
-//        }
-
-        if (!(IoSystemGetByte(&rx, 100))) {
-            continue;
-        }
-
-        IoSystemClearRxQueue();
-
-        prvIoSystemSetRxHandler(rx);
-        if (io_system.rx_handler != NULL) {
-            io_system.rx_handler(rx);
-        }
+    if (lwrb_get_free(&io_uart.lwrb_rx) != 0) {
+      lwrb_read(&io_uart.lwrb_rx, &data, sizeof(char));
+      osMessageQueuePut(uartRxQueueHandle, &data, 0, 100);
     }
 
-    osThreadTerminate(NULL);
+    if (!(IoSystemGetByte(&rx, 100)))
+      continue;
+
+    IoSystemClearRxQueue();
+
+    prvIoSystemSetRxHandler(rx);
+    if (io_system.rx_handler != NULL)
+      io_system.rx_handler(rx);
+  }
+
+  osThreadTerminate(NULL);
 }
 /******************************************************************************/
 
@@ -150,37 +148,40 @@ void IoSystemRxTask(void *argument)
  */
 void IoSystemTxTask(void *argument)
 {
-    for(;;)
-    {
-        if (IoSystemGetMode() == IO_CONSOLE) {
-            if (!(IoSystemIsTxBufferFull())) {
+  for(;;)
+  {
+    if (IoSystemGetMode() == IO_CONSOLE) {
+      uint8_t msg = 0x00;
 
-                uint8_t msg = 0x00;
-                osStatus_t event = osMessageQueueGet(consoleQueueHandle, &msg, NULL, 200);
+      if (!(IoSystemIsTxBufferFull())) {
+        osStatus_t event = osMessageQueueGet(consoleQueueHandle, &msg, NULL, 200);
 
-                if (event != osOK) {
-                    continue;
-                }
-                IoSystemPutDataToTxBuffer(&msg, sizeof(uint8_t));
-            }
-//            UARTSendByteTxBuff(&huart3);
+        if (event != osOK) {
+            continue;
         }
-        else if (IoSystemGetMode() == IO_LOGS) {
-            if (!(IoSystemIsTxBufferFull())) {
+        IoSystemPutDataToTxBuffer(&msg, sizeof(uint8_t));
+      }
 
-                uint8_t msg = 0x00;
-                osStatus_t event = osMessageQueueGet(logsQueueHandle, &msg, NULL, 200);
-
-                if (event != osOK) {
-                    continue;
-                }
-                IoSystemPutDataToTxBuffer(&msg, sizeof(uint8_t));
-            }
-//            UARTSendByteTxBuff(&huart3);
-        }
+      IoUartSendByteTxBuff();
     }
+    else if (IoSystemGetMode() == IO_LOGS) {
+      uint8_t msg = 0x00;
 
-    osThreadTerminate(NULL);
+      if (!(IoSystemIsTxBufferFull())) {
+
+        osStatus_t event = osMessageQueueGet(logsQueueHandle, &msg, NULL, 200);
+
+        if (event != osOK) {
+            continue;
+        }
+        IoSystemPutDataToTxBuffer(&msg, sizeof(uint8_t));
+      }
+
+      IoUartSendByteTxBuff();
+    }
+  }
+
+  osThreadTerminate(NULL);
 }
 /******************************************************************************/
 
@@ -192,16 +193,14 @@ void IoSystemTxTask(void *argument)
  */
 bool IoSystemGetByte(uint8_t *data, uint32_t timeout_ms)
 {
-    *data = 0x00;
+  *data = 0x00;
 
-    osStatus_t event = osMessageQueueGet(uartRxQueueHandle, data, NULL, timeout_ms);
+  osStatus_t event = osMessageQueueGet(uartRxQueueHandle, data, NULL, timeout_ms);
 
-    if (event == osOK) {
-        return true;
-    }
-    else {
-        return false;
-    }
+  if (event == osOK)
+    return true;
+  else
+    return false;
 }
 /******************************************************************************/
 
@@ -213,18 +212,18 @@ bool IoSystemGetByte(uint8_t *data, uint32_t timeout_ms)
  */
 void prvIoSystemSetRxHandler(char rx)
 {
-    if (IoSystemGetMode() == IO_CONSOLE) {
-        io_system.rx_handler = prvIoConsoleRxHandler;
-        return;
-    }
+  if (IoSystemGetMode() == IO_CONSOLE) {
+    io_system.rx_handler = prvIoConsoleRxHandler;
+    return;
+  }
 
 //    if (IoSystemGetMode() == IO_LOGS) {
 //        io_system.rx_handler = io_logs_rx_handler;
 //        return;
 //    }
 
-    IoSystemSetMode(IO_LOGS);
-    io_system.rx_handler = prvIoLogsRxHandler;
+  IoSystemSetMode(IO_LOGS);
+  io_system.rx_handler = prvIoLogsRxHandler;
 }
 /******************************************************************************/
 
@@ -236,7 +235,7 @@ void prvIoSystemSetRxHandler(char rx)
  */
 void prvIoConsoleRxHandler(char rx)
 {
-    ConsoleInsertChar(rx);
+  ConsoleInsertChar(rx);
 }
 /******************************************************************************/
 
@@ -248,15 +247,14 @@ void prvIoConsoleRxHandler(char rx)
  */
 void prvIoLogsRxHandler(char rx)
 {
-    if ((rx == 'T') || (rx == 't')) {
-        IoSystemSetMode(IO_CONSOLE);
-        ConsoleStart();
-        return;
-    }
+  if ((rx == 'T') || (rx == 't')) {
+    IoSystemSetMode(IO_CONSOLE);
+    ConsoleStart();
+    return;
+  }
 
-    if ((rx == 'L') || (rx == 'l')) {
-        IoSystemSetMode(IO_LOGS);
-    }
+  if ((rx == 'L') || (rx == 'l'))
+    IoSystemSetMode(IO_LOGS);
 }
 /******************************************************************************/
 
@@ -268,7 +266,7 @@ void prvIoLogsRxHandler(char rx)
  */
 void IoSystemClearRxQueue(void)
 {
-    osMessageQueueReset(uartRxQueueHandle);
+  osMessageQueueReset(uartRxQueueHandle);
 }
 /******************************************************************************/
 
@@ -280,7 +278,7 @@ void IoSystemClearRxQueue(void)
  */
 bool IoSystemIsTxBufferFull(void)
 {
-//    return (lwrb_get_free(&data_uart.lwrb_tx) == 0 ? true : false);
+  return (lwrb_get_free(&io_uart.lwrb_tx) == 0 ? true : false);
 }
 /******************************************************************************/
 
@@ -292,11 +290,11 @@ bool IoSystemIsTxBufferFull(void)
  */
 bool IoSystemPutDataToTxBuffer(const void* data, size_t len)
 {
-//    if (lwrb_get_free(&data_uart.lwrb_tx) == 0) {
-//        return false;
-//    }
+  if (lwrb_get_free(&io_uart.lwrb_tx) == 0) {
+    return false;
+  }
 
-//    return (lwrb_write(&data_uart.lwrb_tx, data, len) > 0 ? true : false);
+  return (lwrb_write(&io_uart.lwrb_tx, data, len) > 0 ? true : false);
 }
 /******************************************************************************/
 
@@ -308,10 +306,10 @@ bool IoSystemPutDataToTxBuffer(const void* data, size_t len)
  */
 bool IoSystemPutDataToRxBuffer(const void* data, size_t len)
 {
-//    if (lwrb_get_free(&data_uart.lwrb_rx) == 0) {
-//        return false;
-//    }
+  if (lwrb_get_free(&io_uart.lwrb_rx) == 0) {
+    return false;
+  }
 
-//    return (lwrb_write(&data_uart.lwrb_rx, data, len) > 0 ? true : false);
+  return (lwrb_write(&io_uart.lwrb_rx, data, len) > 0 ? true : false);
 }
 /******************************************************************************/
