@@ -66,13 +66,11 @@ void prvGPIOConfig(void);
 int main(void)
 {
   prvInitializeMCU();
+  osKernelInitialize();
+  IoSystemInit();
+  osKernelStart();
 
-  for(;;) {
-    LL_GPIO_SetOutputPin(LED_YL_GPIO_Port, LED_YL_Pin);
-    LL_mDelay(1000);
-    LL_GPIO_ResetOutputPin(LED_YL_GPIO_Port, LED_YL_Pin);
-    LL_mDelay(1000);
-  }
+  for(;;);
 }
 /******************************************************************************/
 
