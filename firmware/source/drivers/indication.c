@@ -19,6 +19,14 @@
 /******************************************************************************/
 mculed_t mculed[N_LED];
 
+const osThreadAttr_t IndicationTask_attributes = {
+        .name = "IndicationUpdateTask",
+        .stack_size = 128 * 4,
+        .priority = (osPriority_t) osPriorityNormal,
+};
+
+osThreadId_t IndicationUpdate;
+
 /******************************************************************************/
 /* Private function prototypes ---------------------------------------------- */
 /******************************************************************************/
@@ -86,6 +94,8 @@ void IndicationInit(void)
 	McuLedInit(&mculed[LED_RD], &fns);
 	McuLedInit(&mculed[LED_YL], &fns);
 	McuLedInit(&mculed[LED_GR], &fns);
+
+//	IndicationUpdate = osThreadNew(IndicationUpdateTask, NULL, &IndicationTask_attributes);
 }
 /******************************************************************************/
 
@@ -94,14 +104,14 @@ void IndicationInit(void)
 
 void IndicationUpdateTask(void *argument)
 {
-    PrintfLogsCRLF(CLR_GR"INDICATION INIT..."CLR_DEF);
-    osDelay(1000);
-    IndicationLedReady();
+  PrintfLogsCRLF(CLR_GR"INDICATION INIT..."CLR_DEF);
+  osDelay(1000);
+  IndicationLedReady();
 
-    for (;;)
-    {
-        IndicationLedsUpdate();
-    }
+  for (;;)
+  {
+    IndicationLedsUpdate();
+  }
 }
 /******************************************************************************/
 
@@ -113,17 +123,17 @@ void IndicationUpdateTask(void *argument)
  */
 void IndicationLedTurnOn(mculed_t *self)
 {
-	HAL_GPIO_WritePin((GPIO_TypeDef *) self->hardware.port, self->hardware.pin, GPIO_PIN_SET);
+  LL_GPIO_SetOutputPin((GPIO_TypeDef *)self->hardware.port, self->hardware.pin);
 }
 
 void IndicationLedTurnOff(mculed_t *self)
 {
-	HAL_GPIO_WritePin((GPIO_TypeDef *) self->hardware.port, self->hardware.pin, GPIO_PIN_RESET);
+  LL_GPIO_ResetOutputPin((GPIO_TypeDef *)self->hardware.port, self->hardware.pin);
 }
 
 void IndicationLedToggle(mculed_t *self)
 {
-	HAL_GPIO_TogglePin((GPIO_TypeDef *)self->hardware.port, self->hardware.pin);
+  LL_GPIO_TogglePin((GPIO_TypeDef *)self->hardware.port, self->hardware.pin);
 }
 /******************************************************************************/
 
@@ -329,6 +339,12 @@ void prvIndicationLedBottomSetup(mculed_t *led_ptr, int led_index)
 
     switch (led_index) {
         case LED_RD:
+            led_ptr->hardware.mode = MCULED_OFF_STATE;
+            led_ptr->setup.on_ms = ZERO_MS;
+            led_ptr->setup.delay_ms = ZERO_MS;
+            led_ptr->setup.off_ms = ZERO_MS;
+            break;
+        case LED_YL:
             led_ptr->hardware.mode = MCULED_OFF_STATE;
             led_ptr->setup.on_ms = ZERO_MS;
             led_ptr->setup.delay_ms = ZERO_MS;

@@ -36,7 +36,7 @@
 #define INDICATION_LED_ERROR_NUM                  (2u)
 #define INDICATION_LED_BUTTON_NUM                 (1u)
 
-#define N_LED                          (4u)
+#define N_LED                          (3u)
 
 #define LED_RD_Pin                   LL_GPIO_PIN_13
 #define LED_RD_GPIO_Port             GPIOC
