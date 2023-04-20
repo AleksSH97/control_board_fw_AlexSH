@@ -181,7 +181,7 @@ void LogPrintWelcomeMsg(void)
 {
     PrintfLogsCRLF(CLR_DEF"");
     PrintfLogsCRLF("");
-    PrintfLogsCRLF("\tWelcome to STM32F407 Discovery firmware with" CLR_RD " FreeRTOS");
+    PrintfLogsCRLF("\tWelcome to VOLTSnet firmware by" CLR_RD " AlexSH");
     PrintfLogsCRLF(CLR_DEF"");
     PrintfLogsCRLF("");
 }

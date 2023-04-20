@@ -17,7 +17,7 @@
 /******************************************************************************/
 /* Private defines ---------------------------------------------------------- */
 /******************************************************************************/
-#define _STM32_DEMO_VER             "1.1"
+#define _STM32_DEMO_VER             "1.0"
 
 #define _ENDLINE_SEQ                "\r\n"
 
@@ -27,20 +27,11 @@
 #define _CMD_LOGIN                  "login"
 #define _CMD_LOGOUT                 "logout"
 
-#define _CMD_AUDIO                  "audio"
-#define _CMD_ACCELERO               "accelero"
-#define _CMD_ENABLE                 "enable"
-
-#define _CMD_BUFF                   "buff"
-#define _CMD_RESET                  "reset"
-#define _CMD_FREE                   "free"
-#define _CMD_CHECK                  "check"
-#define _CMD_BACK                   "back"
 /* Arguments for set/clear */
 #define _SCMD_RD                    "?"
 #define _SCMD_SAVE                  "save"
 
-#define _NUM_OF_CMD                 12
+#define _NUM_OF_CMD                 4
 #define _NUM_OF_SETCLEAR_SCMD       2
 
 #if MICRORL_CFG_USE_ECHO_OFF
@@ -60,9 +51,8 @@ uint8_t  passw_in = 0;
 microrl_t microrl;
 microrl_t *microrl_ptr = &microrl;
 
-char *keyword[] = {_CMD_HELP, _CMD_CLEAR, _CMD_LOGIN, _CMD_LOGOUT,
-        _CMD_BUFF, _CMD_AUDIO, _CMD_RESET, _CMD_FREE,
-        _CMD_ACCELERO, _CMD_ENABLE, _CMD_BACK};    //available  commands
+char *keyword[] = {_CMD_HELP, _CMD_CLEAR, _CMD_LOGIN, _CMD_LOGOUT
+        };    //available  commands
 
 char *read_save_key[] = {_SCMD_RD, _SCMD_SAVE};            // 'read/save' command arguments
 char *compl_word [_NUM_OF_CMD + 1];                        // array for completion
@@ -84,23 +74,23 @@ static void prvConsolePrint(microrl_t *microrl_ptr, const char *str);
  */
 void ConsoleInit(void)
 {
-    microrl_init(microrl_ptr, prvConsolePrint, ConsoleExecute);
+  microrl_init(microrl_ptr, prvConsolePrint, ConsoleExecute);
 
 #if MICRORL_CFG_USE_COMPLETE
-    /* Set callback for auto-completion */
-    microrl_set_complete_callback(microrl_ptr, ConsoleComplete);
+  /* Set callback for auto-completion */
+  microrl_set_complete_callback(microrl_ptr, ConsoleComplete);
 #endif /* MICRORL_CFG_USE_COMPLETE */
 
 #if CONSOLE_NO_PASSW
-    logged_in = 1;
-    PrintfConsoleCont(CLR_CLR);
-    ConsolePrintHelp(microrl_ptr);
-    microrl_set_execute_callback(microrl_ptr, ConsoleExecuteMain);
+  logged_in = 1;
+  PrintfConsoleCont(CLR_CLR);
+  ConsolePrintHelp(microrl_ptr);
+  microrl_set_execute_callback(microrl_ptr, ConsoleExecuteMain);
 #endif /* CONSOLE_NO_PASSW */
 
 #if MICRORL_CFG_USE_CTRL_C
-    /* Set callback for Ctrl+C handling */
-    microrl_set_sigint_callback(microrl_ptr, ConsoleSigint);
+  /* Set callback for Ctrl+C handling */
+  microrl_set_sigint_callback(microrl_ptr, ConsoleSigint);
 #endif /* MICRORL_CFG_USE_CTRL_C */
 }
 /******************************************************************************/
@@ -112,9 +102,9 @@ void ConsoleInit(void)
  */
 void ConsoleStart(void)
 {
-    IoSystemClearRxQueue();
-    LogClearQueues();
-    ConsoleInit();
+  IoSystemClearRxQueue();
+  LogClearQueues();
+  ConsoleInit();
 }
 /******************************************************************************/
 
@@ -126,7 +116,7 @@ void ConsoleStart(void)
  */
 void ConsoleInsertChar(char ch)
 {
-    microrl_processing_input(microrl_ptr, &ch, 1);
+  microrl_processing_input(microrl_ptr, &ch, 1);
 }
 /******************************************************************************/
 
@@ -137,8 +127,8 @@ void ConsoleInsertChar(char ch)
  */
 void prvConsolePrint(microrl_t *microrl_ptr, const char *str)
 {
-    UNUSED(microrl_ptr);
-    PrintfConsoleCont("%s", str);
+  UNUSED(microrl_ptr);
+  PrintfConsoleCont("%s", str);
 }
 /******************************************************************************/
 
@@ -149,7 +139,7 @@ void prvConsolePrint(microrl_t *microrl_ptr, const char *str)
  */
 char ConsoleGetChar(void)
 {
-//   return (char)data_uart.console_input;
+  return (char)io_uart.console_input;
 }
 /******************************************************************************/
 
@@ -169,38 +159,38 @@ int ConsoleExecute(microrl_t *microrl_ptr, int argc, const char * const *argv) {
 
     while (i < argc) {
         if (strcmp(argv[i], _CMD_HELP) == 0) {
-            ConsolePrintHelp(microrl_ptr);        // print help
+          ConsolePrintHelp(microrl_ptr);        // print help
         }
         else if (strcmp(argv[i], _CMD_CLEAR) == 0) {
-            prvConsoleClearScreen(microrl_ptr);
+          prvConsoleClearScreen(microrl_ptr);
         }
         else if (strcmp(argv[i], _CMD_LOGOUT) == 0) {
-            prvConsoleClearScreen(microrl_ptr);
-            IoSystemClearRxQueue();
-            LogClearQueues();
-            microrl_set_execute_callback(microrl_ptr, ConsoleExecute);
-            IoSystemSetMode(IO_LOGS);
+          prvConsoleClearScreen(microrl_ptr);
+          IoSystemClearRxQueue();
+          LogClearQueues();
+          microrl_set_execute_callback(microrl_ptr, ConsoleExecute);
+          IoSystemSetMode(IO_LOGS);
         }
-        else if (strcmp(argv[i], _CMD_BUFF) == 0) {
-            prvConsolePrint(microrl_ptr, "\tChoose your action with buffer: " _ENDLINE_SEQ);
-            ConsolePrintBuff(microrl_ptr);
-            microrl_set_execute_callback(microrl_ptr, ConsoleBuff);
-        }
-        else if (strcmp(argv[i], _CMD_AUDIO) == 0) {
-            prvConsolePrint(microrl_ptr, "\tChoose your action with audio: " _ENDLINE_SEQ);
-            ConsolePrintVisualizer(microrl_ptr);
-            microrl_set_execute_callback(microrl_ptr, ConsoleAudio);
-        }
-        else if (strcmp(argv[i], _CMD_ACCELERO) == 0) {
-            prvConsolePrint(microrl_ptr, "\tChoose your action with accelerometer: " _ENDLINE_SEQ);
-            ConsolePrintAccelerometer(microrl_ptr);
-            microrl_set_execute_callback(microrl_ptr, ConsoleAccelerometer);
-        }
+//        else if (strcmp(argv[i], _CMD_BUFF) == 0) {
+//            prvConsolePrint(microrl_ptr, "\tChoose your action with buffer: " _ENDLINE_SEQ);
+//            //ConsolePrintBuff(microrl_ptr);
+//            //microrl_set_execute_callback(microrl_ptr, ConsoleBuff);
+//        }
+//        else if (strcmp(argv[i], _CMD_AUDIO) == 0) {
+//            prvConsolePrint(microrl_ptr, "\tChoose your action with audio: " _ENDLINE_SEQ);
+//            //ConsolePrintVisualizer(microrl_ptr);
+//            //microrl_set_execute_callback(microrl_ptr, ConsoleAudio);
+//        }
+//        else if (strcmp(argv[i], _CMD_ACCELERO) == 0) {
+//            prvConsolePrint(microrl_ptr, "\tChoose your action with accelerometer: " _ENDLINE_SEQ);
+//            //ConsolePrintAccelerometer(microrl_ptr);
+//            //microrl_set_execute_callback(microrl_ptr, ConsoleAccelerometer);
+//        }
         else {
-            IndicationLedError();
-            prvConsolePrint(microrl_ptr, "command: '");
-            prvConsolePrint(microrl_ptr, (char*)argv[i]);
-            prvConsolePrint(microrl_ptr, "' Not found." _ENDLINE_SEQ);
+          IndicationLedError();
+          prvConsolePrint(microrl_ptr, "command: '");
+          prvConsolePrint(microrl_ptr, (char*)argv[i]);
+          prvConsolePrint(microrl_ptr, "' Not found." _ENDLINE_SEQ);
         }
         i++;
     }
@@ -316,9 +306,9 @@ void prvConsoleClearScreenSimple(microrl_t *microrl_ptr)
  */
 void ConsoleSigint(microrl_t *microrl_ptr)
 {
-    microrl_set_execute_callback(microrl_ptr, ConsoleAudio);
+//    microrl_set_execute_callback(microrl_ptr, ConsoleAudio);
     prvConsoleClearScreen(microrl_ptr);
-    ConsolePrintVisualizer(microrl_ptr);
+//    ConsolePrintVisualizer(microrl_ptr);
 }
 
 
@@ -373,9 +363,9 @@ void ConsolePrintHelp(microrl_t *microrl_ptr)
     char ver_str[6] = {0};
     ConsoleGetVersion(ver_str);
     prvConsolePrint(microrl_ptr, _ENDLINE_SEQ);
-    prvConsolePrint(microrl_ptr, "MicroRL v");
+    prvConsolePrint(microrl_ptr, "Console v");
     prvConsolePrint(microrl_ptr, ver_str);
-    prvConsolePrint(microrl_ptr, " library DEMO v");
+    prvConsolePrint(microrl_ptr, " library v");
     prvConsolePrint(microrl_ptr, _STM32_DEMO_VER);
     prvConsolePrint(microrl_ptr, _ENDLINE_SEQ);
 
@@ -388,9 +378,9 @@ void ConsolePrintHelp(microrl_t *microrl_ptr)
     prvConsolePrint(microrl_ptr, "List of commands:"_ENDLINE_SEQ);
     prvConsolePrint(microrl_ptr, "\tclear               - clear screen"_ENDLINE_SEQ);
     prvConsolePrint(microrl_ptr, "\tlogout              - end session"_ENDLINE_SEQ);
-    prvConsolePrint(microrl_ptr, "\taudio               - audio configuration menu"_ENDLINE_SEQ);
-    prvConsolePrint(microrl_ptr, "\tbuff                - buff configuration menu"_ENDLINE_SEQ);
-    prvConsolePrint(microrl_ptr, "\taccelero            - accelerometer configuration menu"_ENDLINE_SEQ);
+//    prvConsolePrint(microrl_ptr, "\taudio               - audio configuration menu"_ENDLINE_SEQ);
+//    prvConsolePrint(microrl_ptr, "\tbuff                - buff configuration menu"_ENDLINE_SEQ);
+//    prvConsolePrint(microrl_ptr, "\taccelero            - accelerometer configuration menu"_ENDLINE_SEQ);
 
 #if MICRORL_CFG_USE_COMPLETE
     prvConsolePrint(microrl_ptr, "Use TAB key for completion"_ENDLINE_SEQ _ENDLINE_SEQ);
