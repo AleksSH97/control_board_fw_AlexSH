@@ -44,7 +44,7 @@ void IoUartInit(void)
   LL_GPIO_Init(IOUART_Port, &GPIO_InitStruct);
 
   /* UART interrupt Init */
-  NVIC_SetPriority(IOUART_IRQn, 5);
+  NVIC_SetPriority(IOUART_IRQn, 0x05);
   NVIC_EnableIRQ(IOUART_IRQn);
 
   LL_USART_EnableIT_RXNE(IOUART_Periph);
@@ -70,11 +70,75 @@ void IoUartInit(void)
 
 
 
+/**
+ * @brief          I/O uart send byte
+ */
+void IoUartSendByteTxBuff(void)
+{
+  uint8_t msg = 0x00;
+
+  lwrb_read(&io_uart.lwrb_tx, &msg, sizeof(char));
+
+  while (!LL_USART_IsActiveFlag_TXE(IOUART_Periph));
+  LL_USART_TransmitData8(IOUART_Periph, msg);
+}
+/******************************************************************************/
 
 
 
 
+/**
+ * @brief          I/O uart RX callback
+ */
+void IoUartCallback(void)
+{
+  LL_GPIO_TogglePin(LED_GR_GPIO_Port, LED_GR_Pin);
+  io_uart.keyboarb_input = LL_USART_ReceiveData8(IOUART_Periph);
 
+  IoSystemPutDataToRxBuffer(&io_uart.keyboarb_input, sizeof(uint8_t));
+}
+/******************************************************************************/
+
+
+
+
+/**
+ * @brief          IOUART_Periph IRQ handler
+ */
+void UART4_IRQHandler(void)
+{
+  uint8_t errors = 0;
+
+  if (LL_USART_IsActiveFlag_ORE(IOUART_Periph))
+  {
+    //Read DR register for ORE flag reset
+    LL_USART_ClearFlag_ORE(IOUART_Periph);
+    ++errors;
+  }
+  if (LL_USART_IsActiveFlag_FE(IOUART_Periph))
+  {
+    //Read DR register for FE flag reset
+    LL_USART_ClearFlag_FE(IOUART_Periph);
+    ++errors;
+  }
+  if (LL_USART_IsActiveFlag_NE(IOUART_Periph))
+  {
+    //Read DR register for NE flag reset
+    LL_USART_ClearFlag_NE(IOUART_Periph);
+    ++errors;
+  }
+
+  if (errors != 0)
+  {
+    uint8_t rx = LL_USART_ReceiveData8(IOUART_Periph);
+    PROJ_UNUSED(rx);
+  }
+
+  //Check for READ DATA REGISTER NOT EMPTY flag and enabled IT for RXNE
+  if ((LL_USART_IsActiveFlag_RXNE(IOUART_Periph)))
+    IoUartCallback();
+}
+/******************************************************************************/
 
 
 
