@@ -4,7 +4,7 @@
  * @author         : Aleksandr Shabalin       <alexnv97@gmail.com>
  * @brief          : IO_Uart usage file
  ******************************************************************************
- * ----------------- Copyright (c) 2022 Aleksandr Shabalin------------------- *
+ * ----------------- Copyright (c) 2023 Aleksandr Shabalin------------------- *
  ******************************************************************************
  ******************************************************************************
  */
@@ -49,7 +49,7 @@ void IoUartInit(void)
 
   LL_USART_EnableIT_RXNE(IOUART_Periph);
   LL_USART_EnableIT_ERROR(IOUART_Periph);
-  LL_USART_EnableIT_IDLE(IOUART_Periph);
+  //LL_USART_EnableIT_IDLE(IOUART_Periph);
 
   USART_InitStruct.BaudRate            = 115200;
   USART_InitStruct.DataWidth           = LL_USART_DATAWIDTH_8B;
@@ -64,38 +64,6 @@ void IoUartInit(void)
   LL_USART_ConfigAsyncMode(IOUART_Periph);
 
   LL_USART_Enable(IOUART_Periph);
-}
-/******************************************************************************/
-
-
-
-
-/**
- * @brief          I/O uart send byte
- */
-void IoUartSendByteTxBuff(void)
-{
-  uint8_t msg = 0x00;
-
-  lwrb_read(&io_uart.lwrb_tx, &msg, sizeof(char));
-
-  while (!LL_USART_IsActiveFlag_TXE(IOUART_Periph));
-  LL_USART_TransmitData8(IOUART_Periph, msg);
-}
-/******************************************************************************/
-
-
-
-
-/**
- * @brief          I/O uart RX callback
- */
-void IoUartCallback(void)
-{
-  LL_GPIO_TogglePin(LED_GR_GPIO_Port, LED_GR_Pin);
-  io_uart.keyboarb_input = LL_USART_ReceiveData8(IOUART_Periph);
-
-  IoSystemPutDataToRxBuffer(&io_uart.keyboarb_input, sizeof(uint8_t));
 }
 /******************************************************************************/
 
@@ -136,7 +104,7 @@ void UART4_IRQHandler(void)
 
   //Check for READ DATA REGISTER NOT EMPTY flag and enabled IT for RXNE
   if ((LL_USART_IsActiveFlag_RXNE(IOUART_Periph)))
-    IoUartCallback();
+    UARTCallback(IOUART_Periph, &io_uart);
 }
 /******************************************************************************/
 

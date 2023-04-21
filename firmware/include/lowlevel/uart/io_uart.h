@@ -55,7 +55,7 @@ extern "C" {
 
 #define IOUART_RX_QUEUE_SIZE          (128U)
 
-#define PROJ_UNUSED(x)              ((void)(x))
+#define PROJ_UNUSED(x)                ((void)(x))
 
 
 /******************************************************************************/
@@ -68,8 +68,6 @@ extern struct uart io_uart;
 /* Public functions --------------------------------------------------------- */
 /******************************************************************************/
 void IoUartInit(void);
-void IoUartCallback(void);
-void IoUartSendByteTxBuff(void);
 
 
 /******************************************************************************/
