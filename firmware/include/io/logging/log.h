@@ -76,8 +76,12 @@ extern osMessageQueueId_t logsQueueHandle;
 /******************************************************************************/
 void LogsTaskStart(void *argument);
 void LogClearQueues(void);
+
 void LogInit(void);
+
+void LogPrintErrorMsg(void);
 void LogPrintWelcomeMsg(void);
+
 int PrintfLogs(const char *fmt, ...);
 int PrintfConsole(const char *fmt, ...);
 

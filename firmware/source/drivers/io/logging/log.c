@@ -175,6 +175,22 @@ static int prvLwprintfConsoleOut(int ch, lwprintf_t* p)
 
 
 /**
+ * @brief          Print error message at the start
+ */
+void LogPrintErrorMsg(void)
+{
+    PrintfLogsCRLF(CLR_DEF"");
+    PrintfLogsCRLF("");
+    PrintfLogsCRLF(CLR_RD "ERROR INIT UART");
+    PrintfLogsCRLF(CLR_DEF"");
+    PrintfLogsCRLF("");
+}
+/******************************************************************************/
+
+
+
+
+/**
  * @brief          Print welcome message at the start
  */
 void LogPrintWelcomeMsg(void)

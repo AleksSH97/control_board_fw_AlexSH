@@ -139,7 +139,7 @@ void prvConsolePrint(microrl_t *microrl_ptr, const char *str)
  */
 char ConsoleGetChar(void)
 {
-  return (char)io_uart.console_input;
+  return (char)io_uart.transmit;
 }
 /******************************************************************************/
 
