@@ -28,6 +28,12 @@
 #include "indication.h"
 #include "io_uart.h"
 
+#include "stm32f4xx.h"
+#include "stm32f4xx_ll_bus.h"
+#include "stm32f4xx_ll_gpio.h"
+#include "stm32f4xx_ll_usart.h"
+#include "stm32f4xx_ll_rcc.h"
+
 #ifdef __cplusplus
 extern "C" {
 #endif /* __cplusplus */
@@ -36,10 +42,7 @@ extern "C" {
 /******************************************************************************/
 /* Public defines ----------------------------------------------------------- */
 /******************************************************************************/
-#define START_BYTE        0x3A
-#define STOP_BYTE         0x68
-
-#define UART_BUFF_SIZE    8u
+#define UART_BUFF_SIZE    16u
 
 
 /******************************************************************************/
@@ -47,11 +50,15 @@ extern "C" {
 /******************************************************************************/
 extern struct uart io_uart;
 
-//struct __attribute__ ((__packed__)) msg {
-//    uint8_t start_byte;
-//    uint8_t payload;
-//    uint8_t stop_byte;
-//};
+typedef void (*send_byte_fn)(USART_TypeDef *USARTx, lwrb_t* buff);
+typedef void (*receive_byte_fn)(USART_TypeDef *USARTx, struct uart uart);
+typedef void (*init_fn)(void);
+
+typedef struct {
+  send_byte_fn       send_byte;
+  receive_byte_fn    receive_byte;
+  init_fn            init;
+} uart_ctrl_t;
 
 struct uart {
     lwrb_t        lwrb_rx;
@@ -60,27 +67,20 @@ struct uart {
     uint8_t       buff_rx[UART_BUFF_SIZE];
     uint8_t       buff_tx[UART_BUFF_SIZE];
 
-    uint8_t       keyboarb_input;
-    uint8_t       console_input;
+    uint8_t       receive;
+    uint8_t       transmit;
 
-    volatile bool flag;
+    uart_ctrl_t   fns;
 };
 
 
 /******************************************************************************/
 /* Public functions --------------------------------------------------------- */
 /******************************************************************************/
-void UARTAllInit(void);
-void UARTCheckMsg(void);
-void UARTSendPacket(void);
-//bool UARTSetupReceiveMsg(UART_HandleTypeDef *huart, struct msg *msg_ptr);
-//bool UARTSetupReceiveByte(UART_HandleTypeDef *huart, uint8_t *byte);
-//bool UARTSetupReceiveChar(UART_HandleTypeDef *huart, uint8_t *byte);
-//bool UARTSendByte(UART_HandleTypeDef *huart, uint8_t byte);
-//bool UARTSendByteTxBuff(UART_HandleTypeDef *huart);
-//bool UARTReceiveByte(UART_HandleTypeDef *huart,uint8_t byte);
-//bool UARTSendMsg(UART_HandleTypeDef *huart, struct msg *msg_ptr);
-
+bool UARTInit(struct uart *self, uart_ctrl_t *fns);
+void UARTSendByte(USART_TypeDef *USARTx, lwrb_t* buff);
+void UARTReceiveByte(USART_TypeDef *USARTx, struct uart *self);
+void UARTCallback(USART_TypeDef *USARTx, struct uart *uart_ptr);
 
 /******************************************************************************/
 
