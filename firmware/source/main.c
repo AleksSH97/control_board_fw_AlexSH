@@ -67,7 +67,6 @@ int main(void)
 {
   prvInitializeMCU();
   osKernelInitialize();
-  IoSystemInit();
   osKernelStart();
 
   for(;;);
@@ -87,6 +86,7 @@ void prvInitializeMCU(void)
   prvSystemClockConfig();
   prvGPIOConfig();
   IndicationInit();
+  IoSystemInit();
 }
 /******************************************************************************/
 
@@ -275,7 +275,7 @@ void SysTick_Handler(void)
   if (xTaskGetSchedulerState() != taskSCHEDULER_NOT_STARTED)
   {
 #endif  /* INCLUDE_xTaskGetSchedulerState */
-    xPortSysTickHandler();
+  xPortSysTickHandler();
 #if (INCLUDE_xTaskGetSchedulerState  == 1 )
   }
 #endif  /* INCLUDE_xTaskGetSchedulerState */
