@@ -72,6 +72,22 @@ void IoSystemInit(void)
 {
   IoSystemSetMode(IO_LOGS);
 
+  uint8_t init = 0x00;
+  uart_ctrl_t fns = {0};
+
+  fns.init = IoUartInit;
+  fns.receive_byte = UARTReceiveByte;
+  fns.send_byte = UARTSendByte;
+
+  if (!UARTInit(&io_uart, &fns))
+      init = 1;
+
+  LogInit();
+  ConsoleInit();
+
+  if (init)
+    LogPrintErrorMsg();
+
   RxTaskHandle = osThreadNew(IoSystemRxTask, NULL, &RxTask_attributes);
   TxTaskHandle = osThreadNew(IoSystemTxTask, NULL, &TxTask_attributes);
   uartRxQueueHandle = osMessageQueueNew(IOUART_RX_QUEUE_SIZE, sizeof(uint8_t), &uartRxQueueAttributes);
@@ -112,19 +128,16 @@ void IoSystemRxTask(void *argument)
 {
   uint8_t rx = 0x00;
 
-  UARTAllInit();
-  LogInit();
-  ConsoleInit();
   LogPrintWelcomeMsg();
 
   for(;;)
   {
     uint8_t data = 0x00;
 
-    if (lwrb_get_free(&io_uart.lwrb_rx) != 0) {
-      lwrb_read(&io_uart.lwrb_rx, &data, sizeof(char));
-      osMessageQueuePut(uartRxQueueHandle, &data, 0, 100);
-    }
+    if (!(IoSystemReadDataFromRxBuffer(&data)))
+      continue;
+
+    osMessageQueuePut(uartRxQueueHandle, &data, 0, 100);
 
     if (!(IoSystemGetByte(&rx, 100)))
       continue;
@@ -132,6 +145,7 @@ void IoSystemRxTask(void *argument)
     IoSystemClearRxQueue();
 
     prvIoSystemSetRxHandler(rx);
+
     if (io_system.rx_handler != NULL)
       io_system.rx_handler(rx);
   }
@@ -150,34 +164,37 @@ void IoSystemTxTask(void *argument)
 {
   for(;;)
   {
-    if (IoSystemGetMode() == IO_CONSOLE) {
+    if (IoSystemGetMode() == IO_CONSOLE)
+    {
       uint8_t msg = 0x00;
 
-      if (!(IoSystemIsTxBufferFull())) {
+      if (!(IoSystemIsTxBufferFull()))
+      {
         osStatus_t event = osMessageQueueGet(consoleQueueHandle, &msg, NULL, 200);
 
-        if (event != osOK) {
-            continue;
-        }
+        if (event != osOK)
+          continue;
+
         IoSystemPutDataToTxBuffer(&msg, sizeof(uint8_t));
       }
 
-      IoUartSendByteTxBuff();
+      io_uart.fns.send_byte(IOUART_Periph, &io_uart.lwrb_tx);
     }
-    else if (IoSystemGetMode() == IO_LOGS) {
+    else if (IoSystemGetMode() == IO_LOGS)
+    {
       uint8_t msg = 0x00;
 
-      if (!(IoSystemIsTxBufferFull())) {
-
+      if (!(IoSystemIsTxBufferFull()))
+      {
         osStatus_t event = osMessageQueueGet(logsQueueHandle, &msg, NULL, 200);
 
-        if (event != osOK) {
-            continue;
-        }
+        if (event != osOK)
+          continue;
+
         IoSystemPutDataToTxBuffer(&msg, sizeof(uint8_t));
       }
 
-      IoUartSendByteTxBuff();
+      io_uart.fns.send_byte(IOUART_Periph, &io_uart.lwrb_tx);
     }
   }
 
@@ -212,7 +229,8 @@ bool IoSystemGetByte(uint8_t *data, uint32_t timeout_ms)
  */
 void prvIoSystemSetRxHandler(char rx)
 {
-  if (IoSystemGetMode() == IO_CONSOLE) {
+  if (IoSystemGetMode() == IO_CONSOLE)
+  {
     io_system.rx_handler = prvIoConsoleRxHandler;
     return;
   }
@@ -247,7 +265,8 @@ void prvIoConsoleRxHandler(char rx)
  */
 void prvIoLogsRxHandler(char rx)
 {
-  if ((rx == 'T') || (rx == 't')) {
+  if ((rx == 'T') || (rx == 't'))
+  {
     IoSystemSetMode(IO_CONSOLE);
     ConsoleStart();
     return;
@@ -290,9 +309,8 @@ bool IoSystemIsTxBufferFull(void)
  */
 bool IoSystemPutDataToTxBuffer(const void* data, size_t len)
 {
-  if (lwrb_get_free(&io_uart.lwrb_tx) == 0) {
+  if (lwrb_get_free(&io_uart.lwrb_tx) == 0)
     return false;
-  }
 
   return (lwrb_write(&io_uart.lwrb_tx, data, len) > 0 ? true : false);
 }
@@ -302,13 +320,26 @@ bool IoSystemPutDataToTxBuffer(const void* data, size_t len)
 
 
 /**
+ * @brief          Read data from RX ring buffer
+ */
+bool IoSystemReadDataFromRxBuffer(void* data)
+{
+  if (lwrb_get_free(&io_uart.lwrb_rx) == 0)
+    return false;
+
+  return ((lwrb_read(&io_uart.lwrb_rx, data, sizeof(uint8_t))) > 0 ? true : false);
+}
+/******************************************************************************/
+
+
+
+/**
  * @brief          Put data to RX ring buffer
  */
 bool IoSystemPutDataToRxBuffer(const void* data, size_t len)
 {
-  if (lwrb_get_free(&io_uart.lwrb_rx) == 0) {
+  if (lwrb_get_free(&io_uart.lwrb_rx) == 0)
     return false;
-  }
 
   return (lwrb_write(&io_uart.lwrb_rx, data, len) > 0 ? true : false);
 }
