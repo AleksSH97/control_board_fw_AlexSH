@@ -270,6 +270,7 @@ void DebugMon_Handler(void)
  */
 void SysTick_Handler(void)
 {
+  IndicationLedsUpdate();
 #if (INCLUDE_xTaskGetSchedulerState  == 1 )
   if (xTaskGetSchedulerState() != taskSCHEDULER_NOT_STARTED)
   {

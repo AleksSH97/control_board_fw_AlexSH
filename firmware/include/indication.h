@@ -57,8 +57,8 @@
 #define LED_GR_TIME_OFF              (190u)
 #define LED_RIGHT_TIME_OFF           (220u)
 
-#define LED_TIME_ON                  (2000u)
-#define LED_TIME_OFF                 (6000u)
+#define LED_TIME_ON                  (80u)
+#define LED_TIME_OFF                 (150u)
 
 
 /******************************************************************************/
@@ -90,8 +90,8 @@ extern mculed_t mculed[N_LED];
 /* Public functions --------------------------------------------------------- */
 /******************************************************************************/
 void IndicationInit(void);
-void IndicationLedTop(void);
-void IndicationLedBottom(void);
+void IndicationLedYellow(void);
+void IndicationLedGreen(void);
 void IndicationLedLeft(void);
 void IndicationLedRight(void);
 void IndicationLedLoading(void);
