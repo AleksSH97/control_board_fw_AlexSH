@@ -15,28 +15,31 @@
 /******************************************************************************/
 #include "ring_buf.h"
 
+/******************************************************************************/
+/* Private variables -------------------------------------------------------- */
+/******************************************************************************/
 
-
-void RingBufUARTInit(void)
+/**
+ * @brief          Initialization of any ring buffer
+ */
+void RingBuffInit(lwrb_t *lwrb_ptr, uint8_t *buff)
 {
-  lwrb_init(&io_uart.lwrb_rx, io_uart.buff_rx, sizeof(io_uart.buff_rx));
-  lwrb_init(&io_uart.lwrb_tx, io_uart.buff_tx, sizeof(io_uart.buff_tx));
+  lwrb_init(lwrb_ptr, buff, sizeof(buff));
 
-  if (!lwrb_is_ready(&io_uart.lwrb_rx)) {
+  if (!lwrb_is_ready(lwrb_ptr)) {
       PrintfLogsCRLF("Error ring buf uart_rx init");
   }
 
-  if (!lwrb_is_ready(&io_uart.lwrb_tx)) {
-      PrintfLogsCRLF("Error ring buf uart_tx init");
-  }
-
-  lwrb_set_evt_fn(&io_uart.lwrb_rx, RingBufEvtCallback);
-  lwrb_set_evt_fn(&io_uart.lwrb_tx, RingBufEvtCallback);
+  lwrb_set_evt_fn(lwrb_ptr, RingBufEvtCallback);
 }
+/******************************************************************************/
 
 
 
 
+/**
+ * @brief          Ring buffer callback
+ */
 void RingBufEvtCallback(struct uart *self, lwrb_evt_type_t evt, size_t bp)
 {
   switch(evt) {
@@ -51,3 +54,4 @@ void RingBufEvtCallback(struct uart *self, lwrb_evt_type_t evt, size_t bp)
         break;
   }
 }
+/******************************************************************************/
