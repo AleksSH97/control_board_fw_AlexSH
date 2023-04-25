@@ -197,7 +197,7 @@ void LogPrintWelcomeMsg(void)
 {
     PrintfLogsCRLF(CLR_DEF"");
     PrintfLogsCRLF("");
-    PrintfLogsCRLF("\tWelcome to VOLTSnet firmware by" CLR_RD " AlexSH");
+    PrintfLogsCRLF(CLR_MG"Welcome to ESS control board firmware by" CLR_RD " AlexSH");
     PrintfLogsCRLF(CLR_DEF"");
     PrintfLogsCRLF("");
 }
