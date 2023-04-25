@@ -33,7 +33,8 @@ bool UARTInit(struct uart *self, uart_ctrl_t *fns)
   memset((void*)self->buff_tx, 0x00, sizeof(self->buff_tx));
   memset((void*)self->buff_rx, 0x00, sizeof(self->buff_rx));
 
-  RingBufUARTInit();
+  RingBuffInit(&self->lwrb_rx, self->buff_rx);
+  RingBuffInit(&self->lwrb_tx, self->buff_tx);
 
   self->receive = 0;
   self->transmit = 0;
@@ -93,14 +94,3 @@ void UARTCallback(USART_TypeDef *USARTx, struct uart *uart_ptr)
   }
 }
 /******************************************************************************/
-
-
-
-
-
-
-
-
-
-
-
