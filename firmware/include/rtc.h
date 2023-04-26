@@ -21,17 +21,28 @@
 /******************************************************************************/
 #include <stdarg.h>
 
-#include "cmsis_os.h"
-#include "cmsis_os2.h"
-#include "log.h"
 #include "FreeRTOS.h"
 #include "task.h"
+#include "cmsis_os.h"
+#include "cmsis_os2.h"
+
+#include "rtc_i2c.h"
+#include "log.h"
 
 #include "lwprintf/lwprintf.h"
 
 #ifdef __cplusplus
 extern "C" {
 #endif /* __cplusplus */
+
+
+/******************************************************************************/
+/* Public defines ----------------------------------------------------------- */
+/******************************************************************************/
+#define RTC_REQUEST_WRITE          (0x00)
+#define RTC_REQUEST_READ           (0x01)
+
+#define RTC_HW_ADDRESS             (0xD0)
 
 
 /******************************************************************************/
@@ -43,14 +54,36 @@ typedef enum {
   RTC_TRANSMIT_ERROR,
   RTC_RECEIVE_ERROR,
   RTC_FLAG_ERROR,
-} RtcError_t;
+} RTC_STATUS_t;
 
+typedef struct {
+  uint8_t seconds;
+  uint8_t minutes;
+  uint8_t hours;
+  uint16_t ms;
+} RTC_TIME_t;
 
+typedef struct {
+  uint8_t day;
+  uint8_t date;
+  uint8_t month;
+  uint8_t year;
+} RTC_DATE_t;
+
+typedef struct {
+  RTC_TIME_t time;
+  RTC_DATE_t date;
+} RTC_INFO_t;
+
+extern RTC_INFO_t rtc_info;
+extern RTC_STATUS_t rtc_status;
 
 /******************************************************************************/
 /* Public functions --------------------------------------------------------- */
 /******************************************************************************/
-
+uint8_t RtcInit(void);
+void RtcErrorHandler(RTC_STATUS_t error);
+void RtcInitTask(void);
 
 /******************************************************************************/
 
