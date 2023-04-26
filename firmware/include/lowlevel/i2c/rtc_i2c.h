@@ -53,7 +53,7 @@ extern "C" {
 /* Public functions --------------------------------------------------------- */
 /******************************************************************************/
 uint8_t RtcI2cInit(void);
-uint8_t RtcI2cReadByte(uint16_t address, uint8_t *buffer, uint16_t bytes_count);
+uint8_t RtcI2cReadByte(uint16_t addr, uint8_t *buf, uint16_t bytes_count);
 uint8_t RtcI2cWriteByte(uint16_t address, uint8_t *buffer, uint16_t bytes_count);
 
 

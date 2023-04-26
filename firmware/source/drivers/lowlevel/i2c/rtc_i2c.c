@@ -47,7 +47,6 @@ typedef struct {
 static RtcI2c_t rtc_i2c;
 
 static osMutexId_t RtcI2cMutexHandle;
-static osSemaphoreId_t RtcI2cSemphoreHandle;
 
 const osMutexAttr_t RtcI2cMutex_attr = {
   .name = "RtcI2cMutex",
@@ -56,12 +55,7 @@ const osMutexAttr_t RtcI2cMutex_attr = {
   .cb_size = 0U
 };
 
-const osSemaphoreAttr_t RtcI2cSemaphore_attr = {
-    .name = "RtcI2cSemaphore",
-    .attr_bits = 0,
-    .cb_mem = NULL,
-    .cb_size = 0U
-};
+
 
 /******************************************************************************/
 
@@ -71,8 +65,8 @@ const osSemaphoreAttr_t RtcI2cSemaphore_attr = {
  */
 uint8_t RtcI2cInit(void)
 {
-  LL_I2C_InitTypeDef I2C_InitStruct;
-  LL_GPIO_InitTypeDef GPIO_InitStruct;
+  LL_I2C_InitTypeDef I2C_InitStruct = {0};
+  LL_GPIO_InitTypeDef GPIO_InitStruct = {0};
 
   GPIO_InitStruct.Pin = I2C_SCL_Pin;
   GPIO_InitStruct.Mode = LL_GPIO_MODE_ALTERNATE;
@@ -95,6 +89,8 @@ uint8_t RtcI2cInit(void)
 
   LL_APB1_GRP1_EnableClock(LL_APB1_GRP1_PERIPH_I2C1);
   __DSB();
+
+  (void) I2C1->SR2;
 
   rtc_i2c.device = 0;
   rtc_i2c.addr_word = false;
@@ -124,10 +120,6 @@ uint8_t RtcI2cInit(void)
   LL_I2C_SetOwnAddress2(I2C1, 0);
 
   RtcI2cMutexHandle = osMutexNew(&RtcI2cMutex_attr);
-  RtcI2cSemphoreHandle = osSemaphoreNew(1, 1, &RtcI2cSemaphore_attr);
-
-  if (osSemaphoreAcquire(RtcI2cSemphoreHandle, 0) != osOK)
-    return RTC_INIT_ERROR;
 
   return RTC_OK;
 }
@@ -138,58 +130,49 @@ uint8_t RtcI2cInit(void)
 /**
  * @brief          RTC I2C read byte
  */
-uint8_t RtcI2cReadByte(uint16_t address, uint8_t *buffer, uint16_t bytes_count)
+uint8_t RtcI2cReadByte(uint16_t addr, uint8_t *buf, uint16_t bytes_count)
 {
+//  osMutexAcquire(RtcI2cMutexHandle, osWaitForever);
+
   uint16_t i;
 
-  osMutexAcquire(RtcI2cSemphoreHandle, osWaitForever);
-
+  //Disable Pos
   LL_I2C_DisableBitPOS(I2C1);
   LL_I2C_AcknowledgeNextData(I2C1, LL_I2C_ACK);
-
   LL_I2C_GenerateStartCondition(I2C1);
-  while (!LL_I2C_IsActiveFlag_SB(I2C1)){};
-
+  while(!LL_I2C_IsActiveFlag_SB(I2C1)){
+    IndicationLedError();
+  }
+  //read state
   (void) I2C1->SR1;
-
-  LL_I2C_TransmitData8(I2C1, RTC_HW_ADDRESS | RTC_REQUEST_WRITE);
-  while (!LL_I2C_IsActiveFlag_ADDR(I2C1)){};
-
+  LL_I2C_TransmitData8(I2C1, RTC_HW_ADDRESS | I2C_REQUEST_WRITE);
+  while(!LL_I2C_IsActiveFlag_ADDR(I2C1)){};
   LL_I2C_ClearFlag_ADDR(I2C1);
-
-  LL_I2C_TransmitData8(I2C1, (uint8_t)(address >> 8));
-  while (!LL_I2C_IsActiveFlag_TXE(I2C1)){};
-
-  LL_I2C_TransmitData8(I2C1, (uint8_t)address);
-  while (!LL_I2C_IsActiveFlag_TXE(I2C1)){};
-
+//  LL_I2C_TransmitData8(I2C1, (uint8_t) (addr>>8));
+//  while(!LL_I2C_IsActiveFlag_TXE(I2C1)){};
+  LL_I2C_TransmitData8(I2C1, (uint8_t) addr);
+  while(!LL_I2C_IsActiveFlag_TXE(I2C1)){};
   LL_I2C_GenerateStartCondition(I2C1);
-  while (!LL_I2C_IsActiveFlag_SB(I2C1)){};
-
+  while(!LL_I2C_IsActiveFlag_SB(I2C1)){};
   (void) I2C1->SR1;
-
   LL_I2C_TransmitData8(I2C1, RTC_HW_ADDRESS | I2C_REQUEST_READ);
   while (!LL_I2C_IsActiveFlag_ADDR(I2C1)){};
-
   LL_I2C_ClearFlag_ADDR(I2C1);
-
-  for(i = 0; i < bytes_count; i++)
+  for(i=0;i<bytes_count;i++)
   {
-    if(i < (bytes_count - 1))
+    if(i<(bytes_count-1))
     {
-      while (!LL_I2C_IsActiveFlag_RXNE(I2C1)){};
-      buffer[i] = LL_I2C_ReceiveData8(I2C1);
+      while(!LL_I2C_IsActiveFlag_RXNE(I2C1)){};
+      buf[i] = LL_I2C_ReceiveData8(I2C1);
     }
     else
     {
       LL_I2C_AcknowledgeNextData(I2C1, LL_I2C_NACK);
       LL_I2C_GenerateStopCondition(I2C1);
       while(!LL_I2C_IsActiveFlag_RXNE(I2C1)){};
-      buffer[i] = LL_I2C_ReceiveData8(I2C1);
+      buf[i] = LL_I2C_ReceiveData8(I2C1);
     }
   }
-
-  osMutexRelease(RtcI2cSemphoreHandle);
 
   return RTC_OK;
 }
@@ -205,19 +188,32 @@ uint8_t RtcI2cWriteByte(uint16_t address, uint8_t *buffer, uint16_t bytes_count)
 {
   uint16_t i;
 
-  osMutexAcquire(RtcI2cSemphoreHandle, osWaitForever);
+//  osMutexAcquire(RtcI2cMutexHandle, osWaitForever);
 
   LL_I2C_DisableBitPOS(I2C1);
   LL_I2C_AcknowledgeNextData(I2C1, LL_I2C_ACK);
+
   LL_I2C_GenerateStartCondition(I2C1);
+  while(!LL_I2C_IsActiveFlag_SB(I2C1)){};
 
-  while (!LL_I2C_IsActiveFlag_SB(I2C1));
   (void) I2C1->SR1;
-  LL_I2C_TransmitData8(I2C1, RTC_HW_ADDRESS | RTC_REQUEST_WRITE);
 
-  while (!LL_I2C_IsActiveFlag_ADDR(I2C1));
+  LL_I2C_TransmitData8(I2C1, RTC_HW_ADDRESS | RTC_REQUEST_WRITE);
+  while(!LL_I2C_IsActiveFlag_ADDR(I2C1)){};
+
   LL_I2C_ClearFlag_ADDR(I2C1);
 
+//  LL_I2C_TransmitData8(I2C1, (uint8_t) address);
+//  while(!LL_I2C_IsActiveFlag_TXE(I2C1)){};
+
+  for (i = 0; i < bytes_count; i++)
+  {
+    LL_I2C_TransmitData8(I2C1, buffer[i]);
+    while(!LL_I2C_IsActiveFlag_TXE(I2C1)){};
+  }
+  LL_I2C_GenerateStopCondition(I2C1);
+
+//  osMutexRelease(RtcI2cMutexHandle);
 
   return RTC_OK;
 }
