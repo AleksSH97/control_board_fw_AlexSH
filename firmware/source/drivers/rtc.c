@@ -17,6 +17,8 @@
 #include "stm32f4xx_ll_exti.h"
 #include "stm32f4xx_ll_gpio.h"
 
+#include <stdlib.h>
+
 #include "rtc.h"
 
 
@@ -32,7 +34,6 @@
 #define RTC_REG_MINUTES            (0x01)
 #define RTC_REG_HOURS              (0x02)
 #define RTC_REG_DAY                (0x03)
-#define RTC_REG_DATE               (0x04)
 #define RTC_REG_MONTH_CENTURY      (0x05)
 #define RTC_REG_YEAR               (0x06)
 #define RTC_REG_ALARM_1_SECONDS    (0x07)
@@ -57,6 +58,7 @@
 /* Private variables -------------------------------------------------------- */
 /******************************************************************************/
 osThreadId_t RtcTaskHandle;
+static osSemaphoreId_t RtcSemphoreHandle;
 
 const osThreadAttr_t RtcTask_attributes = {
     .name = "RtcTask",
@@ -64,7 +66,14 @@ const osThreadAttr_t RtcTask_attributes = {
     .priority = (osPriority_t) osPriorityNormal,
 };
 
-RTC_STATUS_t rtc_status;
+const osSemaphoreAttr_t RtcSemaphore_attr = {
+    .name = "RtcSemaphore",
+    .attr_bits = 0,
+    .cb_mem = NULL,
+    .cb_size = 0U
+};
+
+RTC_INFO_t rtc_info;
 bool rtc_ok;
 
 
@@ -82,14 +91,51 @@ uint8_t prvRtcGPIOInit(void);
  */
 void RtcTask(void *argument)
 {
-  rtc_status = RtcInit();
+  rtc_info.status = RtcInit();
+  bool read = true;
+  bool write = true;
 
-  for (;;)
+  for(;;)
   {
-    if (rtc_status != 0)
-      RtcErrorHandler(rtc_status);
+    if (rtc_info.status != RTC_OK)
+      RtcErrorHandler(rtc_info.status);
 
+    if (write)
+    {
+      RTC_DATE_t date;
+      char buf[11];
+      buf[0] = 1;
+      buf[1] = 1;
+      buf[3] = 2;
+      buf[4] = 2;
+      buf[6] = 1;
+      buf[7] = 9;
+      buf[8] = 6;
+      buf[9] = 3;
 
+      buf[2] = 0;
+      buf[5] = 0;
+      buf[10] = 0;
+
+      date.day = atoi(&buf[0]);
+      date.month = atoi(&buf[3]);
+      date.year = atoi(&buf[6]) % 100;
+
+      rtc_info.status = RtcSetDate(&date);
+      write = false;
+      osDelay(5000);
+    }
+
+    if (read)
+    {
+      rtc_info.status = RtcGetDate(&rtc_info.date);
+      read = false;
+      osDelay(1000);
+    }
+
+    if (!read)
+      osDelay(500);
+      PrintfConsoleCRLF(CLR_DEF"Date: %02u.%02u.%04u", rtc_info.date.date, rtc_info.date.month, rtc_info.date.year);
   }
 }
 /******************************************************************************/
@@ -120,10 +166,66 @@ uint8_t RtcInit(void)
     return RTC_INIT_ERROR;
   }
 
-  memset(&rtc_status, 0x00, sizeof(rtc_status));
+  memset(&rtc_info, 0x00, sizeof(rtc_info));
   rtc_ok = false;
 
+  RtcSemphoreHandle = osSemaphoreNew(1, 1, &RtcSemaphore_attr);
+
+  if (osSemaphoreAcquire(RtcSemphoreHandle, 0) != osOK)
+    return RTC_INIT_ERROR;
+
   return res;
+}
+/******************************************************************************/
+
+
+
+
+/**
+ * @brief          RTC get current date
+ */
+uint8_t RtcGetDate(RTC_DATE_t *date)
+{
+  uint8_t read_buffer[4];
+
+//  osSemaphoreAcquire(RtcSemphoreHandle, osWaitForever);
+
+  if (RtcI2cReadByte(RTC_REG_DATE, read_buffer, 4) == RTC_OK)
+  {
+    date->day = read_buffer[0];
+    date->date = ((read_buffer[1] >> 4) * 10) + (read_buffer[1] & 0x0F);
+    date->month = ((read_buffer[2] & 0x10) ? 10 : 0) + (read_buffer[2] & 0x0F);
+    date->year  = 2000 + ((read_buffer[2] & 0x80) ? 100 : 0) + ((read_buffer[3] >> 4) * 10) + (read_buffer[3] & 0x0F);
+  }
+  else
+    return RTC_RECEIVE_ERROR;
+
+//  osSemaphoreRelease(RtcSemphoreHandle);
+  return RTC_OK;
+}
+/******************************************************************************/
+
+
+
+
+/**
+ * @brief          RTC set current date
+ */
+uint8_t RtcSetDate(RTC_DATE_t *date)
+{
+  uint8_t write_buffer[3];
+
+//  osSemaphoreAcquire(RtcSemphoreHandle, osWaitForever);
+
+  write_buffer[0] = ((date->date  / 10) << 4) | ((date->date  % 10) & 0x0F);
+  write_buffer[1] = ((date->month / 10) << 4) | ((date->month % 10) & 0x0F);
+  write_buffer[2] = ((date->year  / 10) << 4) | ((date->year  % 10) & 0x0F);
+
+  if ((RtcI2cWriteByte(RTC_REG_DATE, write_buffer, 3)) != 0)
+    return RTC_TRANSMIT_ERROR;
+
+//  osSemaphoreRelease(RtcSemphoreHandle);
+  return RTC_OK;
 }
 /******************************************************************************/
 
@@ -178,7 +280,7 @@ uint8_t prvRtcGPIOInit(void)
 void RtcErrorHandler(RTC_STATUS_t error)
 {
   if (error != 0)
-    PrintfLogsCRLF(CLR_RD "ERROR INIT I2C");
+    PrintfLogsCRLF(CLR_RD "ERROR I2C");
 }
 
 

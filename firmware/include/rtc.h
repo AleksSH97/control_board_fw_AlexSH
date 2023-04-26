@@ -44,6 +44,8 @@ extern "C" {
 
 #define RTC_HW_ADDRESS             (0xD0)
 
+#define RTC_REG_DATE               (0x04)
+
 
 /******************************************************************************/
 /* Public variables --------------------------------------------------------- */
@@ -67,16 +69,16 @@ typedef struct {
   uint8_t day;
   uint8_t date;
   uint8_t month;
-  uint8_t year;
+  uint16_t year;
 } RTC_DATE_t;
 
 typedef struct {
   RTC_TIME_t time;
   RTC_DATE_t date;
+  RTC_STATUS_t status;
 } RTC_INFO_t;
 
 extern RTC_INFO_t rtc_info;
-extern RTC_STATUS_t rtc_status;
 
 /******************************************************************************/
 /* Public functions --------------------------------------------------------- */
@@ -84,6 +86,8 @@ extern RTC_STATUS_t rtc_status;
 uint8_t RtcInit(void);
 void RtcErrorHandler(RTC_STATUS_t error);
 void RtcInitTask(void);
+uint8_t RtcGetDate(RTC_DATE_t *date);
+uint8_t RtcSetDate(RTC_DATE_t *date);
 
 /******************************************************************************/
 
