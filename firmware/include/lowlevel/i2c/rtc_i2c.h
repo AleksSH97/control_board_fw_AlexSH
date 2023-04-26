@@ -21,13 +21,14 @@
 #include <stdint.h>
 #include <stdbool.h>
 
-#include "log.h"
-
 #include "stm32f4xx.h"
 #include "stm32f4xx_ll_bus.h"
 #include "stm32f4xx_ll_gpio.h"
 #include "stm32f4xx_ll_i2c.h"
 #include "stm32f4xx_ll_rcc.h"
+
+#include "log.h"
+#include "rtc.h"
 
 #ifdef __cplusplus
 extern "C" {
@@ -37,7 +38,8 @@ extern "C" {
 /******************************************************************************/
 /* Public defines ----------------------------------------------------------- */
 /******************************************************************************/
-
+#define ADDR_WORD          (true)
+#define ADDR_BYTE          (false)
 #define PROJ_UNUSED(x)                ((void)(x))
 
 
@@ -51,6 +53,8 @@ extern "C" {
 /* Public functions --------------------------------------------------------- */
 /******************************************************************************/
 uint8_t RtcI2cInit(void);
+uint8_t RtcI2cReadByte(uint16_t address, uint8_t *buffer, uint16_t bytes_count);
+uint8_t RtcI2cWriteByte(uint16_t address, uint8_t *buffer, uint16_t bytes_count);
 
 
 /******************************************************************************/
