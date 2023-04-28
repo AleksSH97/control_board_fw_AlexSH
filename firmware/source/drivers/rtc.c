@@ -100,42 +100,43 @@ void RtcTask(void *argument)
     if (rtc_info.status != RTC_OK)
       RtcErrorHandler(rtc_info.status);
 
-    if (write)
-    {
-      RTC_DATE_t date;
-      char buf[11];
-      buf[0] = 1;
-      buf[1] = 1;
-      buf[3] = 2;
-      buf[4] = 2;
-      buf[6] = 1;
-      buf[7] = 9;
-      buf[8] = 6;
-      buf[9] = 3;
-
-      buf[2] = 0;
-      buf[5] = 0;
-      buf[10] = 0;
-
-      date.day = atoi(&buf[0]);
-      date.month = atoi(&buf[3]);
-      date.year = atoi(&buf[6]) % 100;
-
-      rtc_info.status = RtcSetDate(&date);
-      write = false;
-      osDelay(5000);
-    }
+//    if (write)
+//    {
+//      RTC_DATE_t date;
+//      char buf[11];
+//      buf[0] = 1;
+//      buf[1] = 1;
+//      buf[3] = 2;
+//      buf[4] = 2;
+//      buf[6] = 1;
+//      buf[7] = 9;
+//      buf[8] = 6;
+//      buf[9] = 3;
+//
+//      buf[2] = 0;
+//      buf[5] = 0;
+//      buf[10] = 0;
+//
+//      date.day = atoi(&buf[0]);
+//      date.month = atoi(&buf[3]);
+//      date.year = atoi(&buf[6]) % 100;
+//
+//      rtc_info.status = RtcSetDate(&date);
+//      write = false;
+//      osDelay(2000);
+//    }
 
     if (read)
     {
       rtc_info.status = RtcGetDate(&rtc_info.date);
       read = false;
-      osDelay(1000);
     }
 
     if (!read)
-      osDelay(500);
+    {
+      osDelay(1000);
       PrintfConsoleCRLF(CLR_DEF"Date: %02u.%02u.%04u", rtc_info.date.date, rtc_info.date.month, rtc_info.date.year);
+    }
   }
 }
 /******************************************************************************/
@@ -156,25 +157,37 @@ void RtcInitTask(void)
  */
 uint8_t RtcInit(void)
 {
-  uint8_t res = RTC_OK;
+  uint8_t dummy;
 
   if (RtcI2cInit() != RTC_OK) {
     return RTC_INIT_ERROR;
   }
 
-  if (prvRtcGPIOInit() != RTC_OK) {
-    return RTC_INIT_ERROR;
-  }
+//  if (prvRtcGPIOInit() != RTC_OK) {
+//    return RTC_INIT_ERROR;
+//  }
 
   memset(&rtc_info, 0x00, sizeof(rtc_info));
   rtc_ok = false;
+
+  if (RtcI2cReadByte(RTC_HW_ADDRESS, 0, &dummy, 1) == RTC_OK)
+    rtc_ok = true;
+
+  PROJ_UNUSED(dummy);
+
+  osDelay(300);
+
+  if (rtc_ok)
+    RtcI2cWriteByte(RTC_HW_ADDRESS, RTC_REG_CONTROL, 0, 1);
+  else
+    return RTC_INIT_ERROR;
 
   RtcSemphoreHandle = osSemaphoreNew(1, 1, &RtcSemaphore_attr);
 
   if (osSemaphoreAcquire(RtcSemphoreHandle, 0) != osOK)
     return RTC_INIT_ERROR;
 
-  return res;
+  return RTC_OK;
 }
 /******************************************************************************/
 
@@ -190,10 +203,10 @@ uint8_t RtcGetDate(RTC_DATE_t *date)
 
 //  osSemaphoreAcquire(RtcSemphoreHandle, osWaitForever);
 
-  if (RtcI2cReadByte(RTC_REG_DATE, read_buffer, 4) == RTC_OK)
+  if (RtcI2cReadByte(RTC_HW_ADDRESS ,RTC_REG_DAY, read_buffer, 4) == RTC_OK)
   {
-    date->day = read_buffer[0];
-    date->date = ((read_buffer[1] >> 4) * 10) + (read_buffer[1] & 0x0F);
+    date->day   = read_buffer[0];
+    date->date  = ((read_buffer[1] >> 4) * 10) + (read_buffer[1] & 0x0F);
     date->month = ((read_buffer[2] & 0x10) ? 10 : 0) + (read_buffer[2] & 0x0F);
     date->year  = 2000 + ((read_buffer[2] & 0x80) ? 100 : 0) + ((read_buffer[3] >> 4) * 10) + (read_buffer[3] & 0x0F);
   }
@@ -221,7 +234,7 @@ uint8_t RtcSetDate(RTC_DATE_t *date)
   write_buffer[1] = ((date->month / 10) << 4) | ((date->month % 10) & 0x0F);
   write_buffer[2] = ((date->year  / 10) << 4) | ((date->year  % 10) & 0x0F);
 
-  if ((RtcI2cWriteByte(RTC_REG_DATE, write_buffer, 3)) != 0)
+  if ((RtcI2cWriteByte(RTC_HW_ADDRESS, RTC_REG_DATE, write_buffer, 3)) != 0)
     return RTC_TRANSMIT_ERROR;
 
 //  osSemaphoreRelease(RtcSemphoreHandle);
@@ -280,7 +293,7 @@ uint8_t prvRtcGPIOInit(void)
 void RtcErrorHandler(RTC_STATUS_t error)
 {
   if (error != 0)
-    PrintfLogsCRLF(CLR_RD "ERROR I2C");
+    PrintfConsoleCRLF(CLR_RD "ERROR I2C");
 }
 
 
