@@ -100,31 +100,31 @@ void RtcTask(void *argument)
     if (rtc_info.status != RTC_OK)
       RtcErrorHandler(rtc_info.status);
 
-//    if (write)
-//    {
-//      RTC_DATE_t date;
-//      char buf[11];
-//      buf[0] = 1;
-//      buf[1] = 1;
-//      buf[3] = 2;
-//      buf[4] = 2;
-//      buf[6] = 1;
-//      buf[7] = 9;
-//      buf[8] = 6;
-//      buf[9] = 3;
-//
-//      buf[2] = 0;
-//      buf[5] = 0;
-//      buf[10] = 0;
-//
-//      date.day = atoi(&buf[0]);
-//      date.month = atoi(&buf[3]);
-//      date.year = atoi(&buf[6]) % 100;
-//
-//      rtc_info.status = RtcSetDate(&date);
-//      write = false;
-//      osDelay(2000);
-//    }
+    if (write)
+    {
+      RTC_DATE_t date;
+      char buf[11];
+      buf[0] = '2';
+      buf[1] = '2';
+      buf[3] = '1';
+      buf[4] = '1';
+      buf[6] = '2';
+      buf[7] = '0';
+      buf[8] = '1';
+      buf[9] = '1';
+
+      buf[2] = 0;
+      buf[5] = 0;
+      buf[10] = 0;
+
+      date.date = atoi(&buf[0]);
+      date.month = atoi(&buf[3]);
+      date.year = atoi(&buf[6]) % 100;
+
+      rtc_info.status = RtcSetDate(&date);
+      write = false;
+      osDelay(2000);
+    }
 
     if (read)
     {
@@ -144,10 +144,14 @@ void RtcTask(void *argument)
 
 
 
+/**
+ * @brief          RTC init task
+ */
 void RtcInitTask(void)
 {
   RtcTaskHandle = osThreadNew(RtcTask, NULL, &RtcTask_attributes);
 }
+/******************************************************************************/
 
 
 
@@ -163,6 +167,7 @@ uint8_t RtcInit(void)
     return RTC_INIT_ERROR;
   }
 
+//  TODO something is not OK here
 //  if (prvRtcGPIOInit() != RTC_OK) {
 //    return RTC_INIT_ERROR;
 //  }
@@ -175,7 +180,7 @@ uint8_t RtcInit(void)
 
   PROJ_UNUSED(dummy);
 
-  osDelay(300);
+  osDelay(100);
 
   if (rtc_ok)
     RtcI2cWriteByte(RTC_HW_ADDRESS, RTC_REG_CONTROL, 0, 1);
@@ -203,7 +208,7 @@ uint8_t RtcGetDate(RTC_DATE_t *date)
 
 //  osSemaphoreAcquire(RtcSemphoreHandle, osWaitForever);
 
-  if (RtcI2cReadByte(RTC_HW_ADDRESS ,RTC_REG_DAY, read_buffer, 4) == RTC_OK)
+  if (RtcI2cReadByte(RTC_HW_ADDRESS, RTC_REG_DAY, read_buffer, 4) == RTC_OK)
   {
     date->day   = read_buffer[0];
     date->date  = ((read_buffer[1] >> 4) * 10) + (read_buffer[1] & 0x0F);
@@ -292,8 +297,26 @@ uint8_t prvRtcGPIOInit(void)
  */
 void RtcErrorHandler(RTC_STATUS_t error)
 {
-  if (error != 0)
-    PrintfConsoleCRLF(CLR_RD "ERROR I2C");
+  switch (error)
+  {
+    case RTC_OK:
+      break;
+    case RTC_INIT_ERROR:
+      PrintfConsoleCRLF(CLR_DEF"ERROR I2C: "CLR_RD"INIT");
+      break;
+    case RTC_TRANSMIT_ERROR:
+      PrintfConsoleCRLF(CLR_DEF"ERROR I2C: "CLR_RD"TRANSMIT");
+      break;
+    case RTC_RECEIVE_ERROR:
+      PrintfConsoleCRLF(CLR_DEF"ERROR I2C: "CLR_RD"RECEIVE");
+      break;
+    case RTC_FLAG_ERROR:
+      PrintfConsoleCRLF(CLR_DEF"ERROR I2C: "CLR_RD"FLAG");
+      break;
+    default:
+      PrintfConsoleCRLF(CLR_DEF"ERROR I2C: "CLR_RD"UNDEFINED");
+      break;
+  }
 }
 
 
