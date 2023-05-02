@@ -37,6 +37,8 @@
 #include "console.h"
 #include "lwrb.h"
 
+#include "rtc_i2c.h"
+
 #include "cmsis_os.h"
 #include "cmsis_os2.h"
 #include "FreeRTOS.h"
@@ -87,6 +89,7 @@ void prvInitializeMCU(void)
   prvGPIOConfig();
   IndicationInit();
   IoSystemInit();
+  RtcInitTask();
 }
 /******************************************************************************/
 
