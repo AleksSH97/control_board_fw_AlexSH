@@ -81,6 +81,8 @@ bool rtc_ok;
 /* Private function prototypes ---------------------------------------------- */
 /******************************************************************************/
 uint8_t prvRtcGPIOInit(void);
+uint8_t prvGetDate(RTC_DATE_t *date);
+uint8_t prvSetDate(RTC_DATE_t *date);
 
 
 /******************************************************************************/
@@ -92,51 +94,23 @@ uint8_t prvRtcGPIOInit(void);
 void RtcTask(void *argument)
 {
   rtc_info.status = RtcInit();
-  bool read = true;
-  bool write = true;
 
   for(;;)
   {
     if (rtc_info.status != RTC_OK)
       RtcErrorHandler(rtc_info.status);
 
-    if (write)
-    {
-      RTC_DATE_t date;
-      char buf[11];
-      buf[0] = '2';
-      buf[1] = '2';
-      buf[3] = '1';
-      buf[4] = '1';
-      buf[6] = '2';
-      buf[7] = '0';
-      buf[8] = '1';
-      buf[9] = '1';
-
-      buf[2] = 0;
-      buf[5] = 0;
-      buf[10] = 0;
-
-      date.date = atoi(&buf[0]);
-      date.month = atoi(&buf[3]);
-      date.year = atoi(&buf[6]) % 100;
-
-      rtc_info.status = RtcSetDate(&date);
-      write = false;
-      osDelay(2000);
-    }
-
-    if (read)
-    {
-      rtc_info.status = RtcGetDate(&rtc_info.date);
-      read = false;
-    }
-
-    if (!read)
-    {
-      osDelay(1000);
-      PrintfConsoleCRLF(CLR_DEF"Date: %02u.%02u.%04u", rtc_info.date.date, rtc_info.date.month, rtc_info.date.year);
-    }
+//    if (read)
+//    {
+//      rtc_info.status = RtcGetDate(&rtc_info.date);
+//      read = false;
+//    }
+//
+//    if (!read)
+//    {
+//      osDelay(1000);
+//      PrintfConsoleCRLF(CLR_DEF"Date: %02u.%02u.%04u", rtc_info.date.date, rtc_info.date.month, rtc_info.date.year);
+//    }
   }
 }
 /******************************************************************************/
@@ -200,9 +174,50 @@ uint8_t RtcInit(void)
 
 
 /**
+ * @brief          RTC set current date
+ */
+uint8_t RtcSetDate(char *buf)
+{
+  uint8_t res = 0x00;
+  RTC_DATE_t date;
+
+  date.date = atoi(&buf[0]);
+  date.month = atoi(&buf[3]);
+  date.year = atoi(&buf[6]) % 100;
+
+  res = prvSetDate(&date);
+
+  if (res == RTC_OK)
+    PrintfConsoleCRLF(CLR_DEF"Date set "CLR_GR"successful"CLR_DEF);
+
+  return res;
+}
+/******************************************************************************/
+
+
+
+
+/**
  * @brief          RTC get current date
  */
-uint8_t RtcGetDate(RTC_DATE_t *date)
+uint8_t RtcGetDate(void)
+{
+  uint8_t res = 0x00;
+  RTC_DATE_t date;
+
+  res = prvGetDate(&date);
+
+  if(res == RTC_OK)
+    PrintfConsoleCRLF(CLR_DEF"Date: %02u.%02u.%04u", date.date, date.month, date.year);
+
+  return res;
+}
+/******************************************************************************/
+
+
+
+
+uint8_t prvGetDate(RTC_DATE_t *date)
 {
   uint8_t read_buffer[4];
 
@@ -226,10 +241,7 @@ uint8_t RtcGetDate(RTC_DATE_t *date)
 
 
 
-/**
- * @brief          RTC set current date
- */
-uint8_t RtcSetDate(RTC_DATE_t *date)
+uint8_t prvSetDate(RTC_DATE_t *date)
 {
   uint8_t write_buffer[3];
 

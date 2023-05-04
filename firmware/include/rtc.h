@@ -86,8 +86,8 @@ extern RTC_INFO_t rtc_info;
 uint8_t RtcInit(void);
 void RtcErrorHandler(RTC_STATUS_t error);
 void RtcInitTask(void);
-uint8_t RtcGetDate(RTC_DATE_t *date);
-uint8_t RtcSetDate(RTC_DATE_t *date);
+uint8_t RtcGetDate(void);
+uint8_t RtcSetDate(char *buf);
 
 /******************************************************************************/
 
