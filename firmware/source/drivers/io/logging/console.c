@@ -27,11 +27,16 @@
 #define _CMD_LOGIN                  "login"
 #define _CMD_LOGOUT                 "logout"
 
+#define _CMD_CALENDAR               "calendar"
+#define _CMD_DATE                   "date"
+#define _CMD_BACK                   "back"
+#define _CMD_TIME                   "time"
+
 /* Arguments for set/clear */
 #define _SCMD_RD                    "?"
 #define _SCMD_SAVE                  "save"
 
-#define _NUM_OF_CMD                 4
+#define _NUM_OF_CMD                 8
 #define _NUM_OF_SETCLEAR_SCMD       2
 
 #if MICRORL_CFG_USE_ECHO_OFF
@@ -52,7 +57,7 @@ microrl_t microrl;
 microrl_t *microrl_ptr = &microrl;
 
 char *keyword[] = {_CMD_HELP, _CMD_CLEAR, _CMD_LOGIN, _CMD_LOGOUT
-        };    //available  commands
+        , _CMD_CALENDAR, _CMD_DATE, _CMD_BACK, _CMD_TIME};    //available  commands
 
 char *read_save_key[] = {_SCMD_RD, _SCMD_SAVE};            // 'read/save' command arguments
 char *compl_word [_NUM_OF_CMD + 1];                        // array for completion
@@ -171,11 +176,11 @@ int ConsoleExecute(microrl_t *microrl_ptr, int argc, const char * const *argv) {
           microrl_set_execute_callback(microrl_ptr, ConsoleExecute);
           IoSystemSetMode(IO_LOGS);
         }
-//        else if (strcmp(argv[i], _CMD_BUFF) == 0) {
-//            prvConsolePrint(microrl_ptr, "\tChoose your action with buffer: " _ENDLINE_SEQ);
-//            //ConsolePrintBuff(microrl_ptr);
-//            //microrl_set_execute_callback(microrl_ptr, ConsoleBuff);
-//        }
+        else if (strcmp(argv[i], _CMD_CALENDAR) == 0) {
+            prvConsolePrint(microrl_ptr, "\tChoose your action with calendar: " _ENDLINE_SEQ);
+            ConsolePrintCalendar(microrl_ptr);
+            microrl_set_execute_callback(microrl_ptr, ConsoleCalendar);
+        }
 //        else if (strcmp(argv[i], _CMD_AUDIO) == 0) {
 //            prvConsolePrint(microrl_ptr, "\tChoose your action with audio: " _ENDLINE_SEQ);
 //            //ConsolePrintVisualizer(microrl_ptr);
@@ -256,6 +261,71 @@ int ConsoleExecute(microrl_t *microrl_ptr, int argc, const char * const *argv)
     }
 
     return 0;
+}
+/******************************************************************************/
+
+
+
+
+/**
+ * \brief           Buff menu in console
+ * \param[in]
+ */
+int ConsoleCalendar(microrl_t *microrl_ptr, int argc, const char * const *argv)
+{
+  int i = 0;
+
+  while (i < argc)
+  {
+    if (strcmp(argv[i], _CMD_DATE) == 0)
+    {
+      if (++i < argc)
+      {
+
+        if (strcmp(argv[i], "?") == 0)
+        {
+          RtcGetDate();
+        }
+        else if ((strlen(argv[i]) != 10) || (argv[i][2] != '.') || (argv[i][5] != '.'))
+        {
+          PrintfConsoleCRLF("\t"CLR_RD"\tERROR: date format is not DD:MM:YYYY"CLR_DEF);
+          return 0;
+        }
+        else
+        {
+          char buf[11];
+          memcpy(buf, argv[i], 10);
+
+          buf[2] = 0;
+          buf[5] = 0;
+          buf[10] = 0;
+
+          RtcSetDate(buf);
+        }
+      }
+    }
+    else if (strcmp(argv[i], _CMD_TIME) == 0)
+    {
+      //prvConsolePrint(microrl_ptr, "\tBuffer successfully free" _ENDLINE_SEQ);
+    }
+    else if (strcmp(argv[i], _CMD_BACK) == 0)
+    {
+      PrintfConsoleCRLF("BACK TO MAIN MENU"CLR_DEF);
+      PrintfConsoleCRLF("");
+      PrintfConsoleCRLF("");
+      ConsolePrintHelp(microrl_ptr);
+      microrl_set_execute_callback(microrl_ptr, ConsoleExecuteMain);
+    }
+    else
+    {
+      PrintfConsoleCRLF("\tUndefined command");
+      IndicationLedError();
+      ConsolePrintCalendar(microrl_ptr);
+    }
+    i++;
+  }
+
+  return 0;
 }
 /******************************************************************************/
 
@@ -378,7 +448,7 @@ void ConsolePrintHelp(microrl_t *microrl_ptr)
     prvConsolePrint(microrl_ptr, "List of commands:"_ENDLINE_SEQ);
     prvConsolePrint(microrl_ptr, "\tclear               - clear screen"_ENDLINE_SEQ);
     prvConsolePrint(microrl_ptr, "\tlogout              - end session"_ENDLINE_SEQ);
-//    prvConsolePrint(microrl_ptr, "\taudio               - audio configuration menu"_ENDLINE_SEQ);
+    prvConsolePrint(microrl_ptr, "\tcalendar            - calendar config menu"_ENDLINE_SEQ);
 //    prvConsolePrint(microrl_ptr, "\tbuff                - buff configuration menu"_ENDLINE_SEQ);
 //    prvConsolePrint(microrl_ptr, "\taccelero            - accelerometer configuration menu"_ENDLINE_SEQ);
 
@@ -426,11 +496,12 @@ void ConsolePrintVisualizer(microrl_t *microrl_ptr)
 /**
  * @brief          Print visualizer menu
  */
-void ConsolePrintAccelerometer(microrl_t *microrl_ptr)
+void ConsolePrintCalendar(microrl_t *microrl_ptr)
 {
     prvConsolePrint(microrl_ptr, _ENDLINE_SEQ);
-    prvConsolePrint(microrl_ptr, "List of aceelerometer commands:"_ENDLINE_SEQ);
-    prvConsolePrint(microrl_ptr, "\tenable             -  show visualization"_ENDLINE_SEQ);
+    prvConsolePrint(microrl_ptr, "List of calendar commands:"_ENDLINE_SEQ);
+    prvConsolePrint(microrl_ptr, "\tdate               -  set date"_ENDLINE_SEQ);
+    prvConsolePrint(microrl_ptr, "\ttime               -  set date"_ENDLINE_SEQ);
     prvConsolePrint(microrl_ptr, "\tback               -  back to main menu"_ENDLINE_SEQ _ENDLINE_SEQ);
 }
 /******************************************************************************/

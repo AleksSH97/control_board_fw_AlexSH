@@ -25,6 +25,7 @@
 #include <stdbool.h>
 
 #include "log.h"
+#include "rtc.h"
 #include "microrl.h"
 #include "microrl_config.h"
 
@@ -56,6 +57,7 @@ void ConsoleClearScreenSetup(void);
 int ConsoleExecute(microrl_t *microrl_ptr, int argc, const char * const *argv);
 int ConsoleExecuteMain(microrl_t* microrl_ptr, int argc, const char* const *argv);
 int ConsoleBuff(microrl_t *microrl_ptr, int argc, const char * const *argv);
+int ConsoleCalendar(microrl_t *microrl_ptr, int argc, const char * const *argv);
 int ConsoleAudio(microrl_t *microrl_ptr, int argc, const char * const *argv);
 int ConsoleAccelerometer(microrl_t *microrl_ptr, int argc, const char * const *argv);
 char **ConsoleComplete(microrl_t *microrl_ptr, int argc, const char * const *argv);
@@ -67,7 +69,7 @@ void ConsolePrintHelp(microrl_t *microrl_ptr);
 void ConsolePrintBuff(microrl_t *microrl_ptr);
 void ConsolePrintWelcome(microrl_t *microrl_ptr);
 void ConsolePrintVisualizer(microrl_t *microrl_ptr);
-void ConsolePrintAccelerometer(microrl_t *microrl_ptr);
+void ConsolePrintCalendar(microrl_t *microrl_ptr);
 void ConsoleSigint(microrl_t *microrl_ptr);
 
 
