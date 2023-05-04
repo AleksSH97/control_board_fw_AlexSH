@@ -90,6 +90,7 @@ uint8_t RtcI2cInit(void)
   LL_APB1_GRP1_EnableClock(LL_APB1_GRP1_PERIPH_I2C1);
   __DSB();
 
+  //To prevent SB flag
   (void) I2C1->SR2;
 
   rtc_i2c.device = 0;

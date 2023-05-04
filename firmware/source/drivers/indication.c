@@ -550,7 +550,7 @@ void prvIndicationLedButtonDoubleClickSetup(mculed_t *led_ptr, int led_index)
  */
 void prvIndicationLedErrorSetup(mculed_t *led_ptr, int led_index)
 {
-	led_ptr->setup.iterations_num = INDICATION_LED_ERROR_NUM;
+	led_ptr->setup.iterations_num = 1u;
 
   switch (led_index) {
     case LED_RD:
@@ -590,7 +590,7 @@ void prvIndicationLedErrorSetup(mculed_t *led_ptr, int led_index)
 void prvIndicationLedReadySetup(mculed_t *led_ptr)
 {
   led_ptr->hardware.mode = MCULED_ON_STATE;
-  led_ptr->setup.iterations_num = INDICATION_LED_READY_NUM;
+  led_ptr->setup.iterations_num = 1;
 
   led_ptr->setup.on_ms = (INDICATION_LED_SPEED_VERY_SLOW * LED_TIME_ON);
   led_ptr->setup.off_ms = (INDICATION_LED_SPEED_VERY_SLOW * LED_TIME_OFF);
