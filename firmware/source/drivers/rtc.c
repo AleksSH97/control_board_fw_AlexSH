@@ -110,6 +110,7 @@ bool rtc_ok;
 uint8_t prvRtcGPIOInit(void);
 uint8_t prvGetDate(RTC_DATE_t *date);
 uint8_t prvSetDate(RTC_DATE_t *date);
+uint8_t prvCheckDate(RTC_DATE_t *date);
 
 
 /******************************************************************************/
@@ -360,6 +361,20 @@ uint8_t prvSetDate(RTC_DATE_t *date)
 /******************************************************************************/
 
 
+
+
+uint8_t prvCheckDate(RTC_DATE_t *date)
+{
+  if ((date->date < 0) || (date->date > 31))
+    return RTC_CHECK_DATE_ERROR;
+  if ((date->month < 0) || (date->month > 12))
+    return RTC_CHECK_DATE_ERROR;
+  if ((date->year < 0) || (date->year > 99))
+    return RTC_CHECK_DATE_ERROR;
+
+  return RTC_OK;
+}
+/******************************************************************************/
 
 
 /**
