@@ -281,10 +281,17 @@ int ConsoleCalendar(microrl_t *microrl_ptr, int argc, const char * const *argv)
     {
       if (++i < argc)
       {
-
         if (strcmp(argv[i], "?") == 0)
         {
-          RtcGetDate();
+          uint8_t res = 0x00;
+
+          res = RtcSetMode(RTC_GET_DATE);
+
+          if (res != RTC_OK)
+          {
+            RtcSetError(res);
+            return 0;
+          }
         }
         else if ((strlen(argv[i]) != 10) || (argv[i][2] != '.') || (argv[i][5] != '.'))
         {
@@ -293,24 +300,62 @@ int ConsoleCalendar(microrl_t *microrl_ptr, int argc, const char * const *argv)
         }
         else
         {
+          uint8_t res = 0x00;
           char buf[11];
+
           memcpy(buf, argv[i], 10);
 
-          buf[2] = 0;
-          buf[5] = 0;
-          buf[10] = 0;
+          res = RtcSetDate(buf);
 
-          RtcSetDate(buf);
+          if (res != RTC_OK)
+          {
+            RtcSetError(res);
+            return 0;
+          }
         }
       }
     }
     else if (strcmp(argv[i], _CMD_TIME) == 0)
     {
-      //prvConsolePrint(microrl_ptr, "\tBuffer successfully free" _ENDLINE_SEQ);
+      if (++i < argc)
+      {
+        if (strcmp(argv[i], "?") == 0)
+        {
+          uint8_t res = 0x00;
+
+          res = RtcSetMode(RTC_GET_TIME);
+
+          if (res != RTC_OK)
+          {
+            RtcSetError(res);
+            return 0;
+          }
+        }
+        else if ((strlen(argv[i]) != 8) || (argv[i][2] != ':') || (argv[i][5] != ':'))
+        {
+          PrintfConsoleCRLF("\t"CLR_RD"\tERROR: time format is not HH:MM:SS"CLR_DEF);
+          return 0;
+        }
+        else
+        {
+          uint8_t res = 0x00;
+          char buf[9];
+
+          memcpy(buf, argv[i], 8);
+
+          res = RtcSetTime(buf);
+
+          if (res != RTC_OK)
+          {
+            RtcSetError(res);
+            return 0;
+          }
+        }
+      }
     }
     else if (strcmp(argv[i], _CMD_BACK) == 0)
     {
-      PrintfConsoleCRLF("BACK TO MAIN MENU"CLR_DEF);
+      PrintfConsoleCRLF("\tBACK TO MAIN MENU"CLR_DEF);
       PrintfConsoleCRLF("");
       PrintfConsoleCRLF("");
       ConsolePrintHelp(microrl_ptr);
