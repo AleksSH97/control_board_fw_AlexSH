@@ -56,38 +56,39 @@ typedef enum {
   RTC_TRANSMIT_ERROR,
   RTC_RECEIVE_ERROR,
   RTC_FLAG_ERROR,
-} RTC_STATUS_t;
+  RTC_ZERO_POINTER_ERROR,
+  RTC_SET_MODE_ERROR,
+  RTC_SET_DATE_BUFFER_ERROR,
+  RTC_SET_TIME_BUFFER_ERROR,
+  RTC_CHECK_DATE_ERROR,
+  RTC_CHECK_TIME_ERROR,
+  RTC_UNDEFINED_ERROR = 0xFF
+} RTC_ERROR_t;
 
-typedef struct {
-  uint8_t seconds;
-  uint8_t minutes;
-  uint8_t hours;
-  uint16_t ms;
-} RTC_TIME_t;
+typedef enum {
+  RTC_SET_DATE = 0x00,
+  RTC_GET_DATE,
+  RTC_SET_TIME,
+  RTC_GET_TIME,
+  RTC_IDLE = 0xFF
+} RTC_MODE_t;
 
-typedef struct {
-  uint8_t day;
-  uint8_t date;
-  uint8_t month;
-  uint16_t year;
-} RTC_DATE_t;
-
-typedef struct {
-  RTC_TIME_t time;
-  RTC_DATE_t date;
-  RTC_STATUS_t status;
-} RTC_INFO_t;
-
-extern RTC_INFO_t rtc_info;
 
 /******************************************************************************/
 /* Public functions --------------------------------------------------------- */
 /******************************************************************************/
 uint8_t RtcInit(void);
-void RtcErrorHandler(RTC_STATUS_t error);
+void RtcErrorHandler(RTC_ERROR_t error);
 void RtcInitTask(void);
+
 uint8_t RtcGetDate(void);
 uint8_t RtcSetDate(char *buf);
+
+uint8_t RtcSetMode(RTC_MODE_t mode);
+RTC_MODE_t RtcGetMode(void);
+
+void RtcSetError(RTC_ERROR_t error);
+RTC_ERROR_t RtcGetError(void);
 
 /******************************************************************************/
 

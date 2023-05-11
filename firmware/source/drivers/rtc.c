@@ -53,6 +53,9 @@
 #define RTC_REGS_SRAM_LENGTH       (0xFF - 0x14)
 #define RTC_REGS_SRAM_END          (0xFF)
 
+#define RTC_NUM_OF_ERRORS          (255u)
+#define RTC_DATE_BUF_SIZE          (11u)
+#define RTC_TIME_BUF_SIZE          (8u)
 
 /******************************************************************************/
 /* Private variables -------------------------------------------------------- */
@@ -72,6 +75,30 @@ const osSemaphoreAttr_t RtcSemaphore_attr = {
     .cb_mem = NULL,
     .cb_size = 0U
 };
+
+typedef struct {
+  uint8_t seconds;
+  uint8_t minutes;
+  uint8_t hours;
+  uint16_t ms;
+} RTC_TIME_t;
+
+typedef struct {
+  uint8_t day;
+  uint8_t date;
+  uint8_t month;
+  uint16_t year;
+} RTC_DATE_t;
+
+typedef struct {
+  RTC_TIME_t time;
+  RTC_DATE_t date;
+  RTC_ERROR_t error;
+  RTC_MODE_t mode;
+
+  char date_buf[RTC_DATE_BUF_SIZE];
+  char time_buf[RTC_TIME_BUF_SIZE];
+} RTC_INFO_t;
 
 RTC_INFO_t rtc_info;
 bool rtc_ok;
@@ -93,24 +120,23 @@ uint8_t prvSetDate(RTC_DATE_t *date);
  */
 void RtcTask(void *argument)
 {
-  rtc_info.status = RtcInit();
+  RtcSetError(RtcInit());
 
   for(;;)
   {
-    if (rtc_info.status != RTC_OK)
-      RtcErrorHandler(rtc_info.status);
+    if (RtcGetError() != RTC_OK)
+    {
+      RtcErrorHandler(rtc_info.error);
+      RtcSetError(RTC_OK);
+    }
 
-//    if (read)
-//    {
-//      rtc_info.status = RtcGetDate(&rtc_info.date);
-//      read = false;
-//    }
-//
-//    if (!read)
-//    {
-//      osDelay(1000);
-//      PrintfConsoleCRLF(CLR_DEF"Date: %02u.%02u.%04u", rtc_info.date.date, rtc_info.date.month, rtc_info.date.year);
-//    }
+    switch (RtcGetMode()) {
+      case RTC_GET_DATE:
+        RtcSetError(RtcGetDate());
+      case RTC_IDLE:
+        __NOP();
+        break;
+    }
   }
 }
 /******************************************************************************/
@@ -137,9 +163,8 @@ uint8_t RtcInit(void)
 {
   uint8_t dummy;
 
-  if (RtcI2cInit() != RTC_OK) {
+  if (RtcI2cInit() != RTC_OK)
     return RTC_INIT_ERROR;
-  }
 
 //  TODO something is not OK here
 //  if (prvRtcGPIOInit() != RTC_OK) {
@@ -163,7 +188,10 @@ uint8_t RtcInit(void)
 
   RtcSemphoreHandle = osSemaphoreNew(1, 1, &RtcSemaphore_attr);
 
-  if (osSemaphoreAcquire(RtcSemphoreHandle, 0) != osOK)
+  if (RtcSemphoreHandle == NULL)
+    return RTC_INIT_ERROR;
+
+  if (RtcSetMode(RTC_IDLE) != RTC_OK)
     return RTC_INIT_ERROR;
 
   return RTC_OK;
@@ -181,9 +209,23 @@ uint8_t RtcSetDate(char *buf)
   uint8_t res = 0x00;
   RTC_DATE_t date;
 
+  memcpy(rtc_info.date_buf, buf, 10);
+
+  rtc_info.date_buf[2] = 0;
+  rtc_info.date_buf[5] = 0;
+  rtc_info.date_buf[10] = 0;
+
+  if (rtc_info.date_buf == NULL)
+    return RTC_SET_DATE_BUFFER_ERROR;
+
   date.date = atoi(&buf[0]);
   date.month = atoi(&buf[3]);
   date.year = atoi(&buf[6]) % 100;
+
+  res = prvCheckDate(&date);
+
+  if (res != RTC_OK)
+    return RTC_CHECK_DATE_ERROR;
 
   res = prvSetDate(&date);
 
@@ -210,6 +252,8 @@ uint8_t RtcGetDate(void)
   if(res == RTC_OK)
     PrintfConsoleCRLF(CLR_DEF"Date: %02u.%02u.%04u", date.date, date.month, date.year);
 
+  RtcSetMode(RTC_IDLE);
+
   return res;
 }
 /******************************************************************************/
@@ -217,11 +261,66 @@ uint8_t RtcGetDate(void)
 
 
 
+/**
+ * @brief          RTC set current mode
+ * param[in]       mode: mode which going to be set
+ */
+uint8_t RtcSetMode(RTC_MODE_t mode)
+{
+  if (mode > RTC_NUM_OF_ERRORS)
+    return RTC_SET_MODE_ERROR;
+
+  rtc_info.mode = mode;
+
+  return RTC_OK;
+}
+/******************************************************************************/
+
+
+
+
+/**
+ * @brief          RTC get current mode
+ * @return         rtc_info.mode: current instance
+ */
+RTC_MODE_t RtcGetMode(void)
+{
+  return rtc_info.mode;
+}
+/******************************************************************************/
+
+
+
+
+/**
+ * @brief          RTC set current error
+ * param[in]       error: current error
+ */
+void RtcSetError(RTC_ERROR_t error)
+{
+  rtc_info.error = error;
+}
+/******************************************************************************/
+
+
+
+
+/**
+ * @brief          RTC get current error
+ * @return         rtc_info.error current instance
+ */
+RTC_ERROR_t RtcGetError(void)
+{
+  return rtc_info.error;
+}
+/******************************************************************************/
+
+
 uint8_t prvGetDate(RTC_DATE_t *date)
 {
   uint8_t read_buffer[4];
 
-//  osSemaphoreAcquire(RtcSemphoreHandle, osWaitForever);
+  osSemaphoreAcquire(RtcSemphoreHandle, osWaitForever);
 
   if (RtcI2cReadByte(RTC_HW_ADDRESS, RTC_REG_DAY, read_buffer, 4) == RTC_OK)
   {
@@ -233,7 +332,8 @@ uint8_t prvGetDate(RTC_DATE_t *date)
   else
     return RTC_RECEIVE_ERROR;
 
-//  osSemaphoreRelease(RtcSemphoreHandle);
+  osSemaphoreRelease(RtcSemphoreHandle);
+
   return RTC_OK;
 }
 /******************************************************************************/
@@ -245,7 +345,7 @@ uint8_t prvSetDate(RTC_DATE_t *date)
 {
   uint8_t write_buffer[3];
 
-//  osSemaphoreAcquire(RtcSemphoreHandle, osWaitForever);
+  osSemaphoreAcquire(RtcSemphoreHandle, osWaitForever);
 
   write_buffer[0] = ((date->date  / 10) << 4) | ((date->date  % 10) & 0x0F);
   write_buffer[1] = ((date->month / 10) << 4) | ((date->month % 10) & 0x0F);
@@ -254,7 +354,7 @@ uint8_t prvSetDate(RTC_DATE_t *date)
   if ((RtcI2cWriteByte(RTC_HW_ADDRESS, RTC_REG_DATE, write_buffer, 3)) != 0)
     return RTC_TRANSMIT_ERROR;
 
-//  osSemaphoreRelease(RtcSemphoreHandle);
+  osSemaphoreRelease(RtcSemphoreHandle);
   return RTC_OK;
 }
 /******************************************************************************/
@@ -307,26 +407,29 @@ uint8_t prvRtcGPIOInit(void)
 /**
  * @brief          RTC gpio init
  */
-void RtcErrorHandler(RTC_STATUS_t error)
+void RtcErrorHandler(RTC_ERROR_t error)
 {
   switch (error)
   {
     case RTC_OK:
       break;
     case RTC_INIT_ERROR:
-      PrintfConsoleCRLF(CLR_DEF"ERROR I2C: "CLR_RD"INIT");
+      PrintfConsoleCRLF(CLR_DEF"ERROR RTC: "CLR_RD"INIT"CLR_DEF);
       break;
     case RTC_TRANSMIT_ERROR:
-      PrintfConsoleCRLF(CLR_DEF"ERROR I2C: "CLR_RD"TRANSMIT");
+      PrintfConsoleCRLF(CLR_DEF"ERROR RTC: "CLR_RD"TRANSMIT"CLR_DEF);
       break;
     case RTC_RECEIVE_ERROR:
-      PrintfConsoleCRLF(CLR_DEF"ERROR I2C: "CLR_RD"RECEIVE");
+      PrintfConsoleCRLF(CLR_DEF"ERROR RTC: "CLR_RD"RECEIVE"CLR_DEF);
       break;
     case RTC_FLAG_ERROR:
-      PrintfConsoleCRLF(CLR_DEF"ERROR I2C: "CLR_RD"FLAG");
+      PrintfConsoleCRLF(CLR_DEF"ERROR RTC: "CLR_RD"FLAG"CLR_DEF);
+      break;
+    case RTC_CHECK_DATE_ERROR:
+      PrintfConsoleCRLF("\t"CLR_RD"ERROR: date format is not correct"CLR_DEF);
       break;
     default:
-      PrintfConsoleCRLF(CLR_DEF"ERROR I2C: "CLR_RD"UNDEFINED");
+      PrintfConsoleCRLF(CLR_DEF"ERROR RTC: "CLR_RD"UNDEFINED"CLR_DEF);
       break;
   }
 }
