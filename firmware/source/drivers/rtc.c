@@ -399,21 +399,28 @@ RTC_ERROR_t RtcGetError(void)
 /******************************************************************************/
 
 
+
+
 uint8_t prvGetDate(RTC_DATE_t *date)
 {
-  uint8_t read_buffer[4];
+  uint8_t rtc_date_buffer[4];
+  int rc;
 
-  osSemaphoreAcquire(RtcSemphoreHandle, osWaitForever);
-
-  if (RtcI2cReadByte(RTC_HW_ADDRESS, RTC_REG_DAY, read_buffer, 4) == RTC_OK)
-  {
-    date->day   = read_buffer[0];
-    date->date  = ((read_buffer[1] >> 4) * 10) + (read_buffer[1] & 0x0F);
-    date->month = ((read_buffer[2] & 0x10) ? 10 : 0) + (read_buffer[2] & 0x0F);
-    date->year  = 2000 + ((read_buffer[2] & 0x80) ? 100 : 0) + ((read_buffer[3] >> 4) * 10) + (read_buffer[3] & 0x0F);
-  }
-  else
+  rc = osSemaphoreAcquire(RtcSemphoreHandle, osWaitForever);
+  if (rc != osOK)
     return RTC_RECEIVE_ERROR;
+
+  rc = RtcI2cReadByte(RTC_HW_ADDRESS, RTC_REG_DAY, rtc_date_buffer, 4);
+
+  if (rc != RTC_OK) {
+    osSemaphoreRelease(RtcSemphoreHandle);
+    return rc;
+  }
+
+  date->day   = rtc_date_buffer[0];
+  date->date  = ((rtc_date_buffer[1] >> 4) * 10) + (rtc_date_buffer[1] & 0x0F);
+  date->month = ((rtc_date_buffer[2] & 0x10) ? 10 : 0) + (rtc_date_buffer[2] & 0x0F);
+  date->year  = 2000 + ((rtc_date_buffer[2] & 0x80) ? 100 : 0) + ((rtc_date_buffer[3] >> 4) * 10) + (rtc_date_buffer[3] & 0x0F);
 
   osSemaphoreRelease(RtcSemphoreHandle);
 
@@ -426,27 +433,35 @@ uint8_t prvGetDate(RTC_DATE_t *date)
 
 uint8_t prvGetTime(RTC_TIME_t *time)
 {
-  uint8_t read_buffer[3];
+  uint8_t rtc_time_buffer[3];
+  int rc;
 
-  osSemaphoreAcquire(RtcSemphoreHandle, osWaitForever);
-
-  if (RtcI2cReadByte(RTC_HW_ADDRESS, RTC_REG_SECONDS, read_buffer, 3) == RTC_OK)
-  {
-    time->ms = prvGetTicks();
-
-    if (time->ms > 999)
-      time->ms = 999;
-
-    time->seconds = ((read_buffer[0] >> 4) * 10) + (read_buffer[0] & 0x0F);
-    time->minutes = ((read_buffer[1] >> 4) * 10) + (read_buffer[1] & 0x0F);
-
-    if (read_buffer[2] & 0x40)
-      time->hours = ((read_buffer[2] & 0x10) ? 10 : 0) + (read_buffer[2] & 0x0F);
-    else
-      time->hours = ((read_buffer[2] & 0x20) ? 20 : 0) + ((read_buffer[2] & 0x10) ? 10 : 0) + (read_buffer[2] & 0x0F);
-  }
-  else
+  rc = osSemaphoreAcquire(RtcSemphoreHandle, osWaitForever);
+  if (rc != osOK)
     return RTC_RECEIVE_ERROR;
+
+  rc = RtcI2cReadByte(RTC_HW_ADDRESS, RTC_REG_SECONDS, rtc_time_buffer, 3);
+  if (rc != RTC_OK) {
+    osSemaphoreRelease(RtcSemphoreHandle);
+    return rc;
+  }
+
+  // Convert the time from binary to human-readable format.
+  time->seconds = ((rtc_time_buffer[0] >> 4) * 10) + (rtc_time_buffer[0] & 0x0F);
+  time->minutes = ((rtc_time_buffer[1] >> 4) * 10) + (rtc_time_buffer[1] & 0x0F);
+
+  // Check if the 24-hour mode is enabled.
+  if (rtc_time_buffer[2] & 0x40)
+    time->hours = ((rtc_time_buffer[2] & 0x10) ? 10 : 0) + (rtc_time_buffer[2] & 0x0F);
+  else
+    time->hours = ((rtc_time_buffer[2] & 0x20) ? 20 : 0) + ((rtc_time_buffer[2] & 0x10) ? 10 : 0) + (rtc_time_buffer[2] & 0x0F);
+
+  // Get the milliseconds.
+  time->ms = prvGetTicks();
+
+  // Cap the milliseconds at 999.
+  if (time->ms > 999)
+    time->ms = 999;
 
   osSemaphoreRelease(RtcSemphoreHandle);
 
@@ -500,14 +515,16 @@ uint8_t prvSetTime(RTC_TIME_t *time)
 
 uint8_t prvCheckDate(RTC_DATE_t *date)
 {
-  if ((date->date < 0) || (date->date > 31))
-    return RTC_CHECK_DATE_ERROR;
-  if ((date->month < 0) || (date->month > 12))
-    return RTC_CHECK_DATE_ERROR;
-  if ((date->year < 0) || (date->year > 99))
-    return RTC_CHECK_DATE_ERROR;
+  uint8_t status = RTC_OK;
 
-  return RTC_OK;
+  if ((date->date < 1) || (date->date > 31))
+    status = RTC_CHECK_DATE_ERROR;
+  else if ((date->month < 1) || (date->month > 12))
+    status = RTC_CHECK_DATE_ERROR;
+  else if ((date->year < 0) || (date->year > 99))
+    status = RTC_CHECK_DATE_ERROR;
+
+  return status;
 }
 /******************************************************************************/
 
@@ -516,14 +533,16 @@ uint8_t prvCheckDate(RTC_DATE_t *date)
 
 uint8_t prvCheckTime(RTC_TIME_t *time)
 {
-  if ((time->hours < 0) || (time->hours > 23))
-    return RTC_CHECK_TIME_ERROR;
-  if ((time->minutes < 0) || time->minutes > 59)
-    return RTC_CHECK_TIME_ERROR;
-  if ((time->seconds < 0) || time->seconds > 59)
-    return RTC_CHECK_TIME_ERROR;
+  uint8_t status = RTC_OK;
 
-  return RTC_OK;
+  if ((time->hours < 0) || (time->hours > 23))
+    status = RTC_CHECK_TIME_ERROR;
+  if ((time->minutes < 0) || time->minutes > 59)
+    status = RTC_CHECK_TIME_ERROR;
+  if ((time->seconds < 0) || time->seconds > 59)
+    status = RTC_CHECK_TIME_ERROR;
+
+  return status;
 }
 /******************************************************************************/
 
