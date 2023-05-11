@@ -66,9 +66,7 @@ typedef enum {
 } RTC_ERROR_t;
 
 typedef enum {
-  RTC_SET_DATE = 0x00,
-  RTC_GET_DATE,
-  RTC_SET_TIME,
+  RTC_GET_DATE = 0x00,
   RTC_GET_TIME,
   RTC_IDLE = 0xFF
 } RTC_MODE_t;
@@ -80,13 +78,12 @@ typedef enum {
 uint8_t RtcInit(void);
 void RtcErrorHandler(RTC_ERROR_t error);
 void RtcInitTask(void);
-
 uint8_t RtcGetDate(void);
 uint8_t RtcSetDate(char *buf);
-
+uint8_t RtcSetTime(char *buf);
+uint8_t RtcGetTime(void);
 uint8_t RtcSetMode(RTC_MODE_t mode);
 RTC_MODE_t RtcGetMode(void);
-
 void RtcSetError(RTC_ERROR_t error);
 RTC_ERROR_t RtcGetError(void);
 

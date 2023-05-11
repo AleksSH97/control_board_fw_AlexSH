@@ -102,6 +102,7 @@ typedef struct {
 
 RTC_INFO_t rtc_info;
 bool rtc_ok;
+uint32_t systicks;
 
 
 /******************************************************************************/
@@ -111,6 +112,11 @@ uint8_t prvRtcGPIOInit(void);
 uint8_t prvGetDate(RTC_DATE_t *date);
 uint8_t prvSetDate(RTC_DATE_t *date);
 uint8_t prvCheckDate(RTC_DATE_t *date);
+uint8_t prvCheckTime(RTC_TIME_t *time);
+uint8_t prvSetTime(RTC_TIME_t *time);
+uint8_t prvGetTime(RTC_TIME_t *time);
+uint32_t prvGetTicks(void);
+void prvResetSysTicks(void);
 
 
 /******************************************************************************/
@@ -121,19 +127,30 @@ uint8_t prvCheckDate(RTC_DATE_t *date);
  */
 void RtcTask(void *argument)
 {
-  RtcSetError(RtcInit());
+  uint8_t error = 0x00;
+
+  error = RtcInit();
+
+  if (error != RTC_OK)
+    RtcSetError(error);
 
   for(;;)
   {
+    if (error != RTC_OK)
+      RtcSetError(error);
+
     if (RtcGetError() != RTC_OK)
     {
       RtcErrorHandler(rtc_info.error);
       RtcSetError(RTC_OK);
     }
 
-    switch (RtcGetMode()) {
+    switch (RtcGetMode())
+    {
       case RTC_GET_DATE:
-        RtcSetError(RtcGetDate());
+        error = RtcGetDate();
+      case RTC_GET_TIME:
+        error = RtcGetTime();
       case RTC_IDLE:
         __NOP();
         break;
@@ -163,6 +180,7 @@ void RtcInitTask(void)
 uint8_t RtcInit(void)
 {
   uint8_t dummy;
+  systicks = 0UL;
 
   if (RtcI2cInit() != RTC_OK)
     return RTC_INIT_ERROR;
@@ -204,6 +222,8 @@ uint8_t RtcInit(void)
 
 /**
  * @brief          RTC set current date
+ * param[in]       buf: Pointer to buffer with input date
+ * @return         Current error instance
  */
 uint8_t RtcSetDate(char *buf)
 {
@@ -252,6 +272,69 @@ uint8_t RtcGetDate(void)
 
   if(res == RTC_OK)
     PrintfConsoleCRLF(CLR_DEF"Date: %02u.%02u.%04u", date.date, date.month, date.year);
+
+  RtcSetMode(RTC_IDLE);
+
+  return res;
+}
+/******************************************************************************/
+
+
+
+
+/**
+ * @brief          RTC set current time
+ * param[in]       buf: Pointer to buffer with input time
+ * @return         Current error instance
+ */
+uint8_t RtcSetTime(char *buf)
+{
+  uint8_t res = 0x00;
+  RTC_TIME_t time;
+
+  memcpy(rtc_info.time_buf, buf, 8);
+
+  rtc_info.time_buf[2] = 0;
+  rtc_info.time_buf[5] = 0;
+  rtc_info.time_buf[8] = 0;
+
+  if (rtc_info.time_buf == NULL)
+    return RTC_SET_DATE_BUFFER_ERROR;
+
+  time.hours   = atoi(&buf[0]);
+  time.minutes = atoi(&buf[3]);
+  time.seconds = atoi(&buf[6]);
+
+  res = prvCheckTime(&time);
+
+  if (res != RTC_OK)
+    return RTC_CHECK_TIME_ERROR;
+
+  res = prvSetTime(&time);
+
+  if (res == RTC_OK)
+    PrintfConsoleCRLF(CLR_DEF"Time set "CLR_GR"successful"CLR_DEF);
+
+  return res;
+}
+/******************************************************************************/
+
+
+
+
+/**
+ * @brief          RTC get current time
+ */
+uint8_t RtcGetTime(void)
+{
+  uint8_t res = 0x00;
+  RTC_TIME_t time;
+
+  res = prvGetTime(&time);
+
+  if (res == RTC_OK)
+    PrintfConsoleCRLF("\t"CLR_GR"RTC time %02u:%02u:%02u.%03u"CLR_DEF, time.hours, time.minutes,
+        time.seconds, time.ms);
 
   RtcSetMode(RTC_IDLE);
 
@@ -342,6 +425,38 @@ uint8_t prvGetDate(RTC_DATE_t *date)
 
 
 
+uint8_t prvGetTime(RTC_TIME_t *time)
+{
+  uint8_t read_buffer[3];
+
+  osSemaphoreAcquire(RtcSemphoreHandle, osWaitForever);
+
+  if (RtcI2cReadByte(RTC_HW_ADDRESS, RTC_REG_SECONDS, read_buffer, 3) == RTC_OK)
+  {
+    time->ms = prvGetTicks();
+
+    if (time->ms > 999)
+      time->ms = 999;
+
+    time->seconds = ((read_buffer[0] >> 4) * 10) + (read_buffer[0] & 0x0F);
+    time->minutes = ((read_buffer[1] >> 4) * 10) + (read_buffer[1] & 0x0F);
+
+    if (read_buffer[2] & 0x40)
+      time->hours = ((read_buffer[2] & 0x10) ? 10 : 0) + (read_buffer[2] & 0x0F);
+    else
+      time->hours = ((read_buffer[2] & 0x20) ? 20 : 0) + ((read_buffer[2] & 0x10) ? 10 : 0) + (read_buffer[2] & 0x0F);
+  }
+  else
+    return RTC_RECEIVE_ERROR;
+
+  osSemaphoreRelease(RtcSemphoreHandle);
+
+  return RTC_OK;
+}
+/******************************************************************************/
+
+
+
 uint8_t prvSetDate(RTC_DATE_t *date)
 {
   uint8_t write_buffer[3];
@@ -353,6 +468,27 @@ uint8_t prvSetDate(RTC_DATE_t *date)
   write_buffer[2] = ((date->year  / 10) << 4) | ((date->year  % 10) & 0x0F);
 
   if ((RtcI2cWriteByte(RTC_HW_ADDRESS, RTC_REG_DATE, write_buffer, 3)) != 0)
+    return RTC_TRANSMIT_ERROR;
+
+  osSemaphoreRelease(RtcSemphoreHandle);
+  return RTC_OK;
+}
+/******************************************************************************/
+
+
+
+
+uint8_t prvSetTime(RTC_TIME_t *time)
+{
+  uint8_t write_buffer[3];
+
+  osSemaphoreAcquire(RtcSemphoreHandle, osWaitForever);
+
+  write_buffer[0] = ((time->seconds / 10) << 4) | ((time->seconds % 10) & 0x0F);
+  write_buffer[1] = ((time->minutes / 10) << 4) | ((time->minutes % 10) & 0x0F);
+  write_buffer[2] = ((time->hours   / 10) << 4) | ((time->hours   % 10) & 0x0F);
+
+  if ((RtcI2cWriteByte(RTC_HW_ADDRESS, RTC_REG_SECONDS, write_buffer, 3)) != RTC_OK)
     return RTC_TRANSMIT_ERROR;
 
   osSemaphoreRelease(RtcSemphoreHandle);
@@ -375,6 +511,42 @@ uint8_t prvCheckDate(RTC_DATE_t *date)
   return RTC_OK;
 }
 /******************************************************************************/
+
+
+
+
+uint8_t prvCheckTime(RTC_TIME_t *time)
+{
+  if ((time->hours < 0) || (time->hours > 23))
+    return RTC_CHECK_TIME_ERROR;
+  if ((time->minutes < 0) || time->minutes > 59)
+    return RTC_CHECK_TIME_ERROR;
+  if ((time->seconds < 0) || time->seconds > 59)
+    return RTC_CHECK_TIME_ERROR;
+
+  return RTC_OK;
+}
+/******************************************************************************/
+
+
+
+
+uint32_t prvGetTicks(void)
+{
+  return (xTaskGetTickCount() - systicks);
+}
+/******************************************************************************/
+
+
+
+
+void prvResetSysTicks(void)
+{
+  systicks = xTaskGetTickCount();
+}
+/******************************************************************************/
+
+
 
 
 /**
@@ -443,11 +615,15 @@ void RtcErrorHandler(RTC_ERROR_t error)
     case RTC_CHECK_DATE_ERROR:
       PrintfConsoleCRLF("\t"CLR_RD"ERROR: date format is not correct"CLR_DEF);
       break;
+    case RTC_CHECK_TIME_ERROR:
+      PrintfConsoleCRLF("\t"CLR_RD"ERROR: time format is not correct"CLR_DEF);
+      break;
     default:
       PrintfConsoleCRLF(CLR_DEF"ERROR RTC: "CLR_RD"UNDEFINED"CLR_DEF);
       break;
   }
 }
+/******************************************************************************/
 
 
 
