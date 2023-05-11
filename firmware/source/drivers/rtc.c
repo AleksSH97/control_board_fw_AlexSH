@@ -185,10 +185,9 @@ uint8_t RtcInit(void)
   if (RtcI2cInit() != RTC_OK)
     return RTC_INIT_ERROR;
 
-//  TODO something is not OK here
-//  if (prvRtcGPIOInit() != RTC_OK) {
-//    return RTC_INIT_ERROR;
-//  }
+  if (prvRtcGPIOInit() != RTC_OK) {
+    return RTC_INIT_ERROR;
+  }
 
   memset(&rtc_info, 0x00, sizeof(rtc_info));
   rtc_ok = false;
@@ -628,7 +627,15 @@ void RtcErrorHandler(RTC_ERROR_t error)
 
 
 
-
+void EXTI1_IRQHandler(void)
+{
+  if (LL_EXTI_IsActiveFlag_0_31(LL_EXTI_LINE_1))
+  {
+    LL_EXTI_ClearFlag_0_31(LL_EXTI_LINE_1);
+    prvResetSysTicks();
+  }
+}
+/******************************************************************************/
 
 
 
