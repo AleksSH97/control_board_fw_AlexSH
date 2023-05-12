@@ -31,21 +31,6 @@
 /******************************************************************************/
 /* Private variables -------------------------------------------------------- */
 /******************************************************************************/
-typedef struct {
-  volatile uint8_t device;
-  volatile bool addr_word;
-  volatile uint8_t address[2];
-  volatile bool mode_write;
-  volatile bool address_sended;
-  volatile bool repeated_start;
-  volatile uint8_t byte;
-  volatile uint8_t *buffer;
-  volatile uint16_t length;
-  volatile bool result;
-} RtcI2c_t;
-
-static RtcI2c_t rtc_i2c;
-
 static osMutexId_t RtcI2cMutexHandle;
 
 const osMutexAttr_t RtcI2cMutex_attr = {
@@ -93,18 +78,6 @@ uint8_t RtcI2cInit(void)
   //To prevent SB flag
   (void) I2C1->SR2;
 
-  rtc_i2c.device = 0;
-  rtc_i2c.addr_word = false;
-  rtc_i2c.address[0] = 0;
-  rtc_i2c.address[1] = 0;
-  rtc_i2c.mode_write = true;
-  rtc_i2c.address_sended = false;
-  rtc_i2c.repeated_start = false;
-  rtc_i2c.byte = 0;
-  rtc_i2c.buffer = NULL;
-  rtc_i2c.length = 0;
-  rtc_i2c.result = false;
-
   LL_I2C_DisableOwnAddress2(I2C1);
   LL_I2C_DisableGeneralCall(I2C1);
   LL_I2C_EnableClockStretching(I2C1);
@@ -135,7 +108,7 @@ uint8_t RtcI2cInit(void)
  */
 uint8_t RtcI2cReadByte(uint8_t device, uint8_t address, uint8_t *buffer, uint16_t num_bytes)
 {
-//  osMutexAcquire(RtcI2cMutexHandle, osWaitForever);
+  osMutexAcquire(RtcI2cMutexHandle, osWaitForever);
 
   LL_I2C_DisableBitPOS(I2C1);
   LL_I2C_AcknowledgeNextData(I2C1, LL_I2C_ACK);
@@ -186,6 +159,8 @@ uint8_t RtcI2cReadByte(uint8_t device, uint8_t address, uint8_t *buffer, uint16_
     }
   }
 
+  osMutexRelease(RtcI2cMutexHandle);
+
   return RTC_OK;
 }
 /******************************************************************************/
@@ -200,7 +175,7 @@ uint8_t RtcI2cWriteByte(uint8_t device, uint8_t address, uint8_t *buffer, uint16
 {
   uint16_t i;
 
-//  osMutexAcquire(RtcI2cMutexHandle, osWaitForever);
+  osMutexAcquire(RtcI2cMutexHandle, osWaitForever);
 
   LL_I2C_DisableBitPOS(I2C1);
   LL_I2C_AcknowledgeNextData(I2C1, LL_I2C_ACK);
@@ -226,24 +201,9 @@ uint8_t RtcI2cWriteByte(uint8_t device, uint8_t address, uint8_t *buffer, uint16
   }
   LL_I2C_GenerateStopCondition(I2C1);
 
-//  osMutexRelease(RtcI2cMutexHandle);
+  osMutexRelease(RtcI2cMutexHandle);
 
   return RTC_OK;
 }
 /******************************************************************************/
-
-
-
-
-void prvStartTransaction(uint8_t device, bool addr_word, uint16_t address)
-{
-
-}
-
-
-
-
-
-
-
 
