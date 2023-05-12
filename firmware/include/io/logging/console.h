@@ -69,7 +69,6 @@ void ConsolePrintHelp(microrl_t *microrl_ptr);
 void ConsolePrintBuff(microrl_t *microrl_ptr);
 void ConsolePrintWelcome(microrl_t *microrl_ptr);
 void ConsolePrintVisualizer(microrl_t *microrl_ptr);
-void ConsolePrintCalendar(microrl_t *microrl_ptr);
 void ConsoleSigint(microrl_t *microrl_ptr);
 
 

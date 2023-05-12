@@ -17,8 +17,6 @@
 /******************************************************************************/
 /* Private defines ---------------------------------------------------------- */
 /******************************************************************************/
-#define _STM32_DEMO_VER             "1.0"
-
 #define _ENDLINE_SEQ                "\r\n"
 
 /* Definition commands word */
@@ -65,11 +63,11 @@ char *compl_word [_NUM_OF_CMD + 1];                        // array for completi
 /******************************************************************************/
 /* Private function prototypes ---------------------------------------------- */
 /******************************************************************************/
-static void prvConsoleClearScreen(microrl_t *microrl_ptr);
+void prvConsoleClearScreen(void);
+void prvConsoleBack(void);
 void prvConsoleClearScreenSimple(microrl_t *microrl_ptr);
 static void prvConsolePrint(microrl_t *microrl_ptr, const char *str);
-
-
+void prvConsolePrintCalendar(void);
 
 /******************************************************************************/
 
@@ -117,6 +115,19 @@ void ConsoleStart(void)
 
 
 /**
+ * @brief          Console printf
+ */
+void prvConsolePrint(microrl_t *microrl_ptr, const char *str)
+{
+  UNUSED(microrl_ptr);
+  PrintfConsoleCont("%s", str);
+}
+/******************************************************************************/
+
+
+
+
+/**
  * @brief          Console insert char
  */
 void ConsoleInsertChar(char ch)
@@ -127,15 +138,15 @@ void ConsoleInsertChar(char ch)
 
 
 
-/**
- * @brief          Console printf
- */
-void prvConsolePrint(microrl_t *microrl_ptr, const char *str)
-{
-  UNUSED(microrl_ptr);
-  PrintfConsoleCont("%s", str);
-}
-/******************************************************************************/
+///**
+// * @brief          Console printf
+// */
+//void PrintfConsoleCRLF(microrl_t *microrl_ptr, const char *str)
+//{
+//  UNUSED(microrl_ptr);
+//  PrintfConsoleCont("%s", str);
+//}
+///******************************************************************************/
 
 
 
@@ -167,35 +178,35 @@ int ConsoleExecute(microrl_t *microrl_ptr, int argc, const char * const *argv) {
           ConsolePrintHelp(microrl_ptr);        // print help
         }
         else if (strcmp(argv[i], _CMD_CLEAR) == 0) {
-          prvConsoleClearScreen(microrl_ptr);
+          prvConsoleClearScreen();
         }
         else if (strcmp(argv[i], _CMD_LOGOUT) == 0) {
-          prvConsoleClearScreen(microrl_ptr);
+          prvConsoleClearScreen();
           IoSystemClearRxQueue();
           LogClearQueues();
           microrl_set_execute_callback(microrl_ptr, ConsoleExecute);
           IoSystemSetMode(IO_LOGS);
         }
         else if (strcmp(argv[i], _CMD_CALENDAR) == 0) {
-            prvConsolePrint(microrl_ptr, "\tChoose your action with calendar: " _ENDLINE_SEQ);
-            ConsolePrintCalendar(microrl_ptr);
+            PrintfConsoleCRLF("\tChoose your action with calendar: ");
+            prvConsolePrintCalendar();
             microrl_set_execute_callback(microrl_ptr, ConsoleCalendar);
         }
 //        else if (strcmp(argv[i], _CMD_AUDIO) == 0) {
-//            prvConsolePrint(microrl_ptr, "\tChoose your action with audio: " _ENDLINE_SEQ);
+//            PrintfConsoleCRLF(microrl_ptr, "\tChoose your action with audio: " _ENDLINE_SEQ);
 //            //ConsolePrintVisualizer(microrl_ptr);
 //            //microrl_set_execute_callback(microrl_ptr, ConsoleAudio);
 //        }
 //        else if (strcmp(argv[i], _CMD_ACCELERO) == 0) {
-//            prvConsolePrint(microrl_ptr, "\tChoose your action with accelerometer: " _ENDLINE_SEQ);
+//            PrintfConsoleCRLF(microrl_ptr, "\tChoose your action with accelerometer: " _ENDLINE_SEQ);
 //            //ConsolePrintAccelerometer(microrl_ptr);
 //            //microrl_set_execute_callback(microrl_ptr, ConsoleAccelerometer);
 //        }
         else {
           IndicationLedError();
-          prvConsolePrint(microrl_ptr, "command: '");
-          prvConsolePrint(microrl_ptr, (char*)argv[i]);
-          prvConsolePrint(microrl_ptr, "' Not found." _ENDLINE_SEQ);
+          PrintfConsoleCRLF("command: '");
+          PrintfConsoleCRLF((char*)argv[i]);
+          PrintfConsoleCRLF("' Not found.");
         }
         i++;
     }
@@ -219,25 +230,25 @@ int ConsoleExecute(microrl_t *microrl_ptr, int argc, const char * const *argv)
         if (strcmp(argv[i], _CMD_LOGIN) == 0) {
             if (++i < argc) {
                 if (strcmp(argv[i], SESSION_ADMIN_LOGIN) == 0) {
-                    prvConsolePrint(microrl_ptr, "\tEnter password:" _ENDLINE_SEQ);
+                    PrintfConsoleCRLF("\tEnter password:");
                     microrl_set_echo(microrl_ptr, MICRORL_ECHO_ONCE);
                     passw_in = 1;
                     return 0;
                 }
                 else {
-                    prvConsolePrint(microrl_ptr, "\tLogin name doesn't registered. Try again." _ENDLINE_SEQ);
+                    PrintfConsoleCRLF("\tLogin name doesn't registered. Try again.");
                     IndicationLedError();
                     return 1;
                 }
             }
             else {
-                prvConsolePrint(microrl_ptr, "\tEnter your login after 'login' command." _ENDLINE_SEQ);
+                PrintfConsoleCRLF("\tEnter your login after 'login' command.");
                 return 0;
             }
         }
         else if (passw_in == 1) {
             if (strcmp(argv[i], SESSION_ADMIN_PASSW) == 0) {
-                prvConsolePrint(microrl_ptr, "\tLogged in successfully." _ENDLINE_SEQ);
+                PrintfConsoleCRLF("\tLogged in successfully.");
                 passw_in = 0;
                 logged_in = 1;
                 ConsolePrintHelp(microrl_ptr);
@@ -245,15 +256,15 @@ int ConsoleExecute(microrl_t *microrl_ptr, int argc, const char * const *argv)
                 return 0;
             }
             else {
-                prvConsolePrint(microrl_ptr, "\tWrong password. Try again." _ENDLINE_SEQ);
+                PrintfConsoleCRLF("\tWrong password. Try again.");
                 IndicationLedError();
                 passw_in = 0;
                 return 1;
             }
         }
         else {
-            prvConsolePrint(microrl_ptr, "\tYou need to login first!" _ENDLINE_SEQ);
-            prvConsolePrint(microrl_ptr, "\tlogin YOUR_LOGIN"_ENDLINE_SEQ);
+            PrintfConsoleCRLF("\tYou need to login first!");
+            PrintfConsoleCRLF("\tlogin YOUR_LOGIN");
             IndicationLedError();
             return 1;
         }
@@ -355,17 +366,13 @@ int ConsoleCalendar(microrl_t *microrl_ptr, int argc, const char * const *argv)
     }
     else if (strcmp(argv[i], _CMD_BACK) == 0)
     {
-      PrintfConsoleCRLF("\tBACK TO MAIN MENU"CLR_DEF);
-      PrintfConsoleCRLF("");
-      PrintfConsoleCRLF("");
-      ConsolePrintHelp(microrl_ptr);
-      microrl_set_execute_callback(microrl_ptr, ConsoleExecuteMain);
+      prvConsoleBack();
     }
     else
     {
       PrintfConsoleCRLF("\tUndefined command");
       IndicationLedError();
-      ConsolePrintCalendar(microrl_ptr);
+      prvConsolePrintCalendar();
     }
     i++;
   }
@@ -382,7 +389,7 @@ int ConsoleCalendar(microrl_t *microrl_ptr, int argc, const char * const *argv)
  */
 void ConsoleClearScreenSetup(void)
 {
-    prvConsoleClearScreenSimple(microrl_ptr);
+  prvConsoleClearScreenSimple(microrl_ptr);
 }
 /******************************************************************************/
 
@@ -392,10 +399,10 @@ void ConsoleClearScreenSetup(void)
 /**
  * \brief           Clear console screen fn
  */
-void prvConsoleClearScreen(microrl_t *microrl_ptr)
+void prvConsoleClearScreen(void)
 {
-    prvConsolePrint(microrl_ptr, "\033[2J" _ENDLINE_SEQ);    // ESC seq for clear entire screen
-    prvConsolePrint(microrl_ptr, "\033[H" _ENDLINE_SEQ);     // ESC seq for move cursor at left-top corner
+  PrintfConsoleCRLF("\033[2J");
+  PrintfConsoleCRLF("\033[H");
 }
 /******************************************************************************/
 
@@ -407,7 +414,23 @@ void prvConsoleClearScreen(microrl_t *microrl_ptr)
  */
 void prvConsoleClearScreenSimple(microrl_t *microrl_ptr)
 {
-    prvConsolePrint(microrl_ptr, "\033[2J" _ENDLINE_SEQ);    // ESC seq for clear entire screen
+  PrintfConsoleCRLF("\033[2J");
+}
+/******************************************************************************/
+
+
+
+
+/**
+ * \brief           Back to main menu command
+ */
+void prvConsoleBack(void)
+{
+  PrintfConsoleCRLF("\tBACK TO MAIN MENU"CLR_DEF);
+  PrintfConsoleCRLF("");
+  PrintfConsoleCRLF("");
+  ConsolePrintHelp(microrl_ptr);
+  microrl_set_execute_callback(microrl_ptr, ConsoleExecuteMain);
 }
 /******************************************************************************/
 
@@ -421,9 +444,7 @@ void prvConsoleClearScreenSimple(microrl_t *microrl_ptr)
  */
 void ConsoleSigint(microrl_t *microrl_ptr)
 {
-//    microrl_set_execute_callback(microrl_ptr, ConsoleAudio);
-    prvConsoleClearScreen(microrl_ptr);
-//    ConsolePrintVisualizer(microrl_ptr);
+  prvConsoleClearScreen();
 }
 
 
@@ -477,28 +498,29 @@ void ConsolePrintHelp(microrl_t *microrl_ptr)
 {
     char ver_str[6] = {0};
     ConsoleGetVersion(ver_str);
-    prvConsolePrint(microrl_ptr, _ENDLINE_SEQ);
-    prvConsolePrint(microrl_ptr, "Console v");
-    prvConsolePrint(microrl_ptr, ver_str);
-    prvConsolePrint(microrl_ptr, " library v");
-    prvConsolePrint(microrl_ptr, _STM32_DEMO_VER);
-    prvConsolePrint(microrl_ptr, _ENDLINE_SEQ);
+    PrintfConsoleCont("");
+    PrintfConsoleCont("Console "CLR_GR "v ");
+    PrintfConsoleCont(ver_str);
+    PrintfConsoleCRLF("");
+    PrintfConsoleCRLF(CLR_YL"(modified by AlexSH)"CLR_DEF);
+    PrintfConsoleCRLF(CLR_YL"https://github.com/alexVOLTS"CLR_DEF);
+    PrintfConsoleCRLF("");
 
 #if MICRORL_CFG_USE_ECHO_OFF
     if (!logged_in) {
-        prvConsolePrint(microrl_ptr, "\tlogin YOUR_LOGIN      - 'admin' in this example"_ENDLINE_SEQ);
+        PrintfConsoleCRLF("\tlogin YOUR_LOGIN      - 'admin' in this example");
     }
 #endif /* MICRORL_CFG_USE_ECHO_OFF */
 
-    prvConsolePrint(microrl_ptr, "List of commands:"_ENDLINE_SEQ);
-    prvConsolePrint(microrl_ptr, "\tclear               - clear screen"_ENDLINE_SEQ);
-    prvConsolePrint(microrl_ptr, "\tlogout              - end session"_ENDLINE_SEQ);
-    prvConsolePrint(microrl_ptr, "\tcalendar            - calendar config menu"_ENDLINE_SEQ);
-//    prvConsolePrint(microrl_ptr, "\tbuff                - buff configuration menu"_ENDLINE_SEQ);
-//    prvConsolePrint(microrl_ptr, "\taccelero            - accelerometer configuration menu"_ENDLINE_SEQ);
+    PrintfConsoleCRLF("List of commands:");
+    PrintfConsoleCRLF("\tclear               - clear screen");
+    PrintfConsoleCRLF("\tlogout              - end session");
+    PrintfConsoleCRLF("\tcalendar            - calendar config menu");
+//    PrintfConsoleCRLF(microrl_ptr, "\tbuff                - buff configuration menu"_ENDLINE_SEQ);
+//    PrintfConsoleCRLF(microrl_ptr, "\taccelero            - accelerometer configuration menu"_ENDLINE_SEQ);
 
 #if MICRORL_CFG_USE_COMPLETE
-    prvConsolePrint(microrl_ptr, "Use TAB key for completion"_ENDLINE_SEQ _ENDLINE_SEQ);
+    PrintfConsoleCRLF("Use TAB key for completion");
 #endif /* MICRORL_CFG_USE_COMPLETE */
 }
 /******************************************************************************/
@@ -511,12 +533,13 @@ void ConsolePrintHelp(microrl_t *microrl_ptr)
  */
 void ConsolePrintBuff(microrl_t *microrl_ptr)
 {
-    prvConsolePrint(microrl_ptr, _ENDLINE_SEQ);
-    prvConsolePrint(microrl_ptr, "List of buff commands:"_ENDLINE_SEQ);
-    prvConsolePrint(microrl_ptr, "\treset               - reset buffer"_ENDLINE_SEQ);
-    prvConsolePrint(microrl_ptr, "\tfree                - free buff memory"_ENDLINE_SEQ);
-    prvConsolePrint(microrl_ptr, "\tcheck               - check your buff"_ENDLINE_SEQ);
-    prvConsolePrint(microrl_ptr, "\tback                - back to main menu"_ENDLINE_SEQ _ENDLINE_SEQ);
+  PrintfConsoleCRLF("");
+  PrintfConsoleCRLF("List of buff commands:");
+  PrintfConsoleCRLF("\treset               - reset buffer");
+  PrintfConsoleCRLF("\tfree                - free buff memory");
+  PrintfConsoleCRLF("\tcheck               - check your buff");
+  PrintfConsoleCRLF("\tback                - back to main menu");
+  PrintfConsoleCRLF("");
 }
 /******************************************************************************/
 
@@ -528,10 +551,11 @@ void ConsolePrintBuff(microrl_t *microrl_ptr)
  */
 void ConsolePrintVisualizer(microrl_t *microrl_ptr)
 {
-    prvConsolePrint(microrl_ptr, _ENDLINE_SEQ);
-    prvConsolePrint(microrl_ptr, "List of audio visualizer commands:"_ENDLINE_SEQ);
-    prvConsolePrint(microrl_ptr, "\tenable             -  enable visualization"_ENDLINE_SEQ);
-    prvConsolePrint(microrl_ptr, "\tback               -  back to main menu"_ENDLINE_SEQ _ENDLINE_SEQ);
+  PrintfConsoleCRLF("");
+  PrintfConsoleCRLF("List of audio visualizer commands:");
+  PrintfConsoleCRLF("\tenable             -  enable visualization");
+  PrintfConsoleCRLF("\tback               -  back to main menu");
+  PrintfConsoleCRLF("");
 }
 /******************************************************************************/
 
@@ -541,13 +565,14 @@ void ConsolePrintVisualizer(microrl_t *microrl_ptr)
 /**
  * @brief          Print visualizer menu
  */
-void ConsolePrintCalendar(microrl_t *microrl_ptr)
+void prvConsolePrintCalendar(void)
 {
-    prvConsolePrint(microrl_ptr, _ENDLINE_SEQ);
-    prvConsolePrint(microrl_ptr, "List of calendar commands:"_ENDLINE_SEQ);
-    prvConsolePrint(microrl_ptr, "\tdate               -  set date"_ENDLINE_SEQ);
-    prvConsolePrint(microrl_ptr, "\ttime               -  set date"_ENDLINE_SEQ);
-    prvConsolePrint(microrl_ptr, "\tback               -  back to main menu"_ENDLINE_SEQ _ENDLINE_SEQ);
+  PrintfConsoleCRLF("");
+  PrintfConsoleCRLF("List of calendar commands:");
+  PrintfConsoleCRLF("\tdate               -  set date");
+  PrintfConsoleCRLF("\ttime               -  set date");
+  PrintfConsoleCRLF("\tback               -  back to main menu");
+  PrintfConsoleCRLF("");
 }
 /******************************************************************************/
 
@@ -559,9 +584,9 @@ void ConsolePrintCalendar(microrl_t *microrl_ptr)
  */
 void ConsolePrintWelcome(microrl_t *microrl_ptr)
 {
-    prvConsolePrint(microrl_ptr, _ENDLINE_SEQ);
-    prvConsolePrint(microrl_ptr, "\tWelcome to console!"_ENDLINE_SEQ);
-    prvConsolePrint(microrl_ptr, "\tEnter your login, than your password please"_ENDLINE_SEQ);
+    PrintfConsoleCRLF("");
+    PrintfConsoleCRLF("\tWelcome to console!");
+    PrintfConsoleCRLF("\tEnter your login, than your password please");
 }
 /******************************************************************************/
 
