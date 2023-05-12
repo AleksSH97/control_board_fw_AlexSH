@@ -42,9 +42,8 @@ extern "C" {
 #define RTC_REQUEST_WRITE          (0x00)
 #define RTC_REQUEST_READ           (0x01)
 
-#define RTC_HW_ADDRESS             (0xD0)
-
-#define RTC_REG_DATE               (0x04)
+#define RTC_DATE_BUF_SIZE          (11u)
+#define RTC_TIME_BUF_SIZE          (8u)
 
 
 /******************************************************************************/
@@ -71,6 +70,31 @@ typedef enum {
   RTC_IDLE = 0xFF
 } RTC_MODE_t;
 
+typedef struct {
+  uint8_t seconds;
+  uint8_t minutes;
+  uint8_t hours;
+  uint16_t ms;
+} RTC_TIME_t;
+
+typedef struct {
+  uint8_t day;
+  uint8_t date;
+  uint8_t month;
+  uint16_t year;
+} RTC_DATE_t;
+
+typedef struct {
+  RTC_TIME_t time;
+  RTC_DATE_t date;
+  RTC_ERROR_t error;
+  RTC_MODE_t mode;
+
+  char date_buf[RTC_DATE_BUF_SIZE];
+  char time_buf[RTC_TIME_BUF_SIZE];
+} RTC_INFO_t;
+
+extern RTC_INFO_t rtc_info;
 
 /******************************************************************************/
 /* Public functions --------------------------------------------------------- */

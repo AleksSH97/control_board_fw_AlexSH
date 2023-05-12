@@ -30,10 +30,13 @@
 #define RTCINT_Pin                 LL_GPIO_PIN_1
 #define RTCINT_GPIO_Port           GPIOC
 
+#define RTC_HW_ADDRESS             (0xD0)
+
 #define RTC_REG_SECONDS            (0x00)
 #define RTC_REG_MINUTES            (0x01)
 #define RTC_REG_HOURS              (0x02)
 #define RTC_REG_DAY                (0x03)
+#define RTC_REG_DATE               (0x04)
 #define RTC_REG_MONTH_CENTURY      (0x05)
 #define RTC_REG_YEAR               (0x06)
 #define RTC_REG_ALARM_1_SECONDS    (0x07)
@@ -54,8 +57,6 @@
 #define RTC_REGS_SRAM_END          (0xFF)
 
 #define RTC_NUM_OF_ERRORS          (255u)
-#define RTC_DATE_BUF_SIZE          (11u)
-#define RTC_TIME_BUF_SIZE          (8u)
 
 /******************************************************************************/
 /* Private variables -------------------------------------------------------- */
@@ -75,30 +76,6 @@ const osSemaphoreAttr_t RtcSemaphore_attr = {
     .cb_mem = NULL,
     .cb_size = 0U
 };
-
-typedef struct {
-  uint8_t seconds;
-  uint8_t minutes;
-  uint8_t hours;
-  uint16_t ms;
-} RTC_TIME_t;
-
-typedef struct {
-  uint8_t day;
-  uint8_t date;
-  uint8_t month;
-  uint16_t year;
-} RTC_DATE_t;
-
-typedef struct {
-  RTC_TIME_t time;
-  RTC_DATE_t date;
-  RTC_ERROR_t error;
-  RTC_MODE_t mode;
-
-  char date_buf[RTC_DATE_BUF_SIZE];
-  char time_buf[RTC_TIME_BUF_SIZE];
-} RTC_INFO_t;
 
 RTC_INFO_t rtc_info;
 bool rtc_ok;
@@ -124,36 +101,46 @@ void prvResetSysTicks(void);
 
 /**
  * @brief          RTC task
+ * param[in]       argument: Pointer to *argument for FreeRTOS
  */
 void RtcTask(void *argument)
 {
-  uint8_t error = 0x00;
+  uint8_t error = RTC_OK;
 
   error = RtcInit();
 
   if (error != RTC_OK)
-    RtcSetError(error);
-
-  for(;;)
   {
-    if (error != RTC_OK)
-      RtcSetError(error);
+    RtcSetError(error);
+    return;
+  }
+
+  for (;;) {
 
     if (RtcGetError() != RTC_OK)
     {
       RtcErrorHandler(rtc_info.error);
       RtcSetError(RTC_OK);
+      continue;
     }
 
     switch (RtcGetMode())
     {
       case RTC_GET_DATE:
         error = RtcGetDate();
+        break;
       case RTC_GET_TIME:
         error = RtcGetTime();
+        break;
       case RTC_IDLE:
         __NOP();
         break;
+    }
+
+    if (error != RTC_OK)
+    {
+      RtcSetError(error);
+      continue;
     }
   }
 }
@@ -175,7 +162,8 @@ void RtcInitTask(void)
 
 
 /**
- * @brief          RTC init
+ * @brief          RTC initialization
+ * @return         Current error instance
  */
 uint8_t RtcInit(void)
 {
@@ -221,7 +209,7 @@ uint8_t RtcInit(void)
 
 /**
  * @brief          RTC set current date
- * param[in]       buf: Pointer to buffer with input date
+ * param[in]       buf: Pointer to @ref buffer with input date
  * @return         Current error instance
  */
 uint8_t RtcSetDate(char *buf)
@@ -261,16 +249,16 @@ uint8_t RtcSetDate(char *buf)
 
 /**
  * @brief          RTC get current date
+ * @return         Current error instance
  */
 uint8_t RtcGetDate(void)
 {
   uint8_t res = 0x00;
-  RTC_DATE_t date;
 
-  res = prvGetDate(&date);
+  res = prvGetDate(&rtc_info.date);
 
   if(res == RTC_OK)
-    PrintfConsoleCRLF(CLR_DEF"Date: %02u.%02u.%04u", date.date, date.month, date.year);
+    PrintfConsoleCRLF(CLR_DEF"Date: %02u.%02u.%04u", rtc_info.date.date, rtc_info.date.month, rtc_info.date.year);
 
   RtcSetMode(RTC_IDLE);
 
@@ -323,17 +311,17 @@ uint8_t RtcSetTime(char *buf)
 
 /**
  * @brief          RTC get current time
+ * @return         Current error instance
  */
 uint8_t RtcGetTime(void)
 {
   uint8_t res = 0x00;
-  RTC_TIME_t time;
 
-  res = prvGetTime(&time);
+  res = prvGetTime(&rtc_info.time);
 
   if (res == RTC_OK)
-    PrintfConsoleCRLF("\t"CLR_GR"RTC time %02u:%02u:%02u.%03u"CLR_DEF, time.hours, time.minutes,
-        time.seconds, time.ms);
+    PrintfConsoleCRLF("\t"CLR_GR"RTC time %02u:%02u:%02u.%03u"CLR_DEF, rtc_info.time.hours, rtc_info.time.minutes,
+        rtc_info.time.seconds, rtc_info.time.ms);
 
   RtcSetMode(RTC_IDLE);
 
@@ -346,7 +334,8 @@ uint8_t RtcGetTime(void)
 
 /**
  * @brief          RTC set current mode
- * param[in]       mode: mode which going to be set
+ * @param[in]      mode: mode which need to be set
+ * @return         Current error instance
  */
 uint8_t RtcSetMode(RTC_MODE_t mode)
 {
@@ -364,7 +353,7 @@ uint8_t RtcSetMode(RTC_MODE_t mode)
 
 /**
  * @brief          RTC get current mode
- * @return         rtc_info.mode: current instance
+ * @return         rtc_info.mode: current mode instance
  */
 RTC_MODE_t RtcGetMode(void)
 {
@@ -377,7 +366,7 @@ RTC_MODE_t RtcGetMode(void)
 
 /**
  * @brief          RTC set current error
- * param[in]       error: current error
+ * @param[in]      error: error which need to be set
  */
 void RtcSetError(RTC_ERROR_t error)
 {
@@ -404,7 +393,7 @@ RTC_ERROR_t RtcGetError(void)
 uint8_t prvGetDate(RTC_DATE_t *date)
 {
   uint8_t rtc_date_buffer[4];
-  int rc;
+  uint8_t rc;
 
   rc = osSemaphoreAcquire(RtcSemphoreHandle, osWaitForever);
   if (rc != osOK)
@@ -434,7 +423,7 @@ uint8_t prvGetDate(RTC_DATE_t *date)
 uint8_t prvGetTime(RTC_TIME_t *time)
 {
   uint8_t rtc_time_buffer[3];
-  int rc;
+  uint8_t rc;
 
   rc = osSemaphoreAcquire(RtcSemphoreHandle, osWaitForever);
   if (rc != osOK)
@@ -468,6 +457,7 @@ uint8_t prvGetTime(RTC_TIME_t *time)
   return RTC_OK;
 }
 /******************************************************************************/
+
 
 
 
@@ -567,9 +557,6 @@ void prvResetSysTicks(void)
 
 
 
-/**
- * @brief          RTC gpio init
- */
 uint8_t prvRtcGPIOInit(void)
 {
   LL_GPIO_InitTypeDef GPIO_InitStruct;
@@ -610,7 +597,8 @@ uint8_t prvRtcGPIOInit(void)
 
 
 /**
- * @brief          RTC gpio init
+ * @brief          RTC error handler
+ * @param[in]      RTC_ERROR_t instance error
  */
 void RtcErrorHandler(RTC_ERROR_t error)
 {
@@ -655,9 +643,4 @@ void EXTI1_IRQHandler(void)
   }
 }
 /******************************************************************************/
-
-
-
-
-
 
