@@ -43,6 +43,10 @@ extern "C" {
 #ifndef CONSOLE_NO_PASSW
 #define CONSOLE_NO_PASSW                1
 #endif
+
+
+/******************************************************************************/
+/* Public variables --------------------------------------------------------- */
 /******************************************************************************/
 
 
@@ -65,12 +69,11 @@ char **ConsoleComplete(microrl_t *microrl_ptr, int argc, const char * const *arg
 void ConsoleGetVersion(char* ver_str);
 void ConsoleInsertChar(char ch);
 
-void ConsolePrintHelp(microrl_t *microrl_ptr);
+void ConsolePrintHelp(void);
 void ConsolePrintBuff(microrl_t *microrl_ptr);
 void ConsolePrintWelcome(microrl_t *microrl_ptr);
 void ConsolePrintVisualizer(microrl_t *microrl_ptr);
 void ConsoleSigint(microrl_t *microrl_ptr);
-
 
 /******************************************************************************/
 
