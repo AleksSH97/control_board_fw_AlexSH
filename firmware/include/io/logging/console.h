@@ -64,7 +64,7 @@ int ConsoleBuff(microrl_t *microrl_ptr, int argc, const char * const *argv);
 int ConsoleCalendar(microrl_t *microrl_ptr, int argc, const char * const *argv);
 int ConsoleAudio(microrl_t *microrl_ptr, int argc, const char * const *argv);
 int ConsoleAccelerometer(microrl_t *microrl_ptr, int argc, const char * const *argv);
-char **ConsoleComplete(microrl_t *microrl_ptr, int argc, const char * const *argv);
+char **ConsoleComplete(int argc, const char * const *argv);
 
 void ConsoleGetVersion(char* ver_str);
 void ConsoleInsertChar(char ch);
