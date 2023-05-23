@@ -26,7 +26,6 @@
 #include "cmsis_os.h"
 #include "cmsis_os2.h"
 
-#include "rtc_i2c.h"
 #include "log.h"
 
 #include "lwprintf/lwprintf.h"
@@ -41,6 +40,37 @@ extern "C" {
 /******************************************************************************/
 #define RTC_REQUEST_WRITE          (0x00)
 #define RTC_REQUEST_READ           (0x01)
+
+#define RTCRST_Pin                 LL_GPIO_PIN_0
+#define RTCRST_GPIO_Port           GPIOC
+#define RTCINT_Pin                 LL_GPIO_PIN_1
+#define RTCINT_GPIO_Port           GPIOC
+
+#define RTC_HW_ADDRESS             (0xD0)
+
+#define RTC_REG_SECONDS            (0x00)
+#define RTC_REG_MINUTES            (0x01)
+#define RTC_REG_HOURS              (0x02)
+#define RTC_REG_DAY                (0x03)
+#define RTC_REG_DATE               (0x04)
+#define RTC_REG_MONTH_CENTURY      (0x05)
+#define RTC_REG_YEAR               (0x06)
+#define RTC_REG_ALARM_1_SECONDS    (0x07)
+#define RTC_REG_ALARM_1_MINUTES    (0x08)
+#define RTC_REG_ALARM_1_HOURS      (0x09)
+#define RTC_REG_ALARM_1_DAY_DATE   (0x0A)
+#define RTC_REG_ALARM_2_MINUTES    (0x0B)
+#define RTC_REG_ALARM_2_HOURS      (0x0C)
+#define RTC_REG_ALARM_2_DAY_DATE   (0x0D)
+#define RTC_REG_CONTROL            (0x0E)
+#define RTC_REG_STATUS             (0x0F)
+#define RTC_REG_AGING_OFFSET       (0x10)
+#define RTC_REG_TEMP_MSB           (0x11)
+#define RTC_REG_TEMP_LSB           (0x12)
+#define RTC_REG_TEST               (0x13)
+#define RTC_REGS_SRAM_OFFSET       (0x14)
+#define RTC_REGS_SRAM_LENGTH       (0xFF - 0x14)
+#define RTC_REGS_SRAM_END          (0xFF)
 
 #define RTC_DATE_BUF_SIZE          (11u)
 #define RTC_TIME_BUF_SIZE          (8u)
@@ -64,27 +94,31 @@ typedef enum {
   RTC_UNDEFINED_ERROR = 0xFF
 } RTC_ERROR_t;
 
-typedef enum {
+typedef enum
+{
   RTC_GET_DATE = 0x00,
   RTC_GET_TIME,
   RTC_IDLE = 0xFF
 } RTC_MODE_t;
 
-typedef struct {
+typedef struct
+{
   uint8_t seconds;
   uint8_t minutes;
   uint8_t hours;
   uint16_t ms;
 } RTC_TIME_t;
 
-typedef struct {
+typedef struct
+{
   uint8_t day;
   uint8_t date;
   uint8_t month;
   uint16_t year;
 } RTC_DATE_t;
 
-typedef struct {
+typedef struct
+{
   RTC_TIME_t time;
   RTC_DATE_t date;
   RTC_ERROR_t error;
@@ -95,6 +129,7 @@ typedef struct {
 } RTC_INFO_t;
 
 extern RTC_INFO_t rtc_info;
+
 
 /******************************************************************************/
 /* Public functions --------------------------------------------------------- */
