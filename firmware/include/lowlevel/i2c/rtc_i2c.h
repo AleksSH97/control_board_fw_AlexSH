@@ -31,7 +31,7 @@ extern "C" {
 /******************************************************************************/
 #define ADDR_WORD          (true)
 #define ADDR_BYTE          (false)
-#define PROJ_UNUSED(x)                ((void)(x))
+#define PROJ_UNUSED(x)     ((void)(x))
 
 
 /******************************************************************************/
@@ -45,8 +45,8 @@ extern "C" {
 uint8_t RtcI2cInit(void);
 uint8_t RtcI2cReadByte(uint8_t device, uint8_t address, uint8_t *buffer, uint16_t num_bytes);
 uint8_t RtcI2cWriteByte(uint8_t device, uint8_t address, uint8_t *buffer, uint16_t num_bytes);
-uint8_t RtcI2cReadByteInterrupt(uint8_t device, bool addr_word, uint8_t address, void *buffer, uint16_t length);
-uint8_t RtcI2cReadBufferInterrupt(uint8_t device, bool addr_word, uint8_t address, void *buffer, uint16_t length);
+uint8_t RtcI2cReadByteInterrupt(uint8_t device, bool addr_word, uint8_t address, uint8_t *buffer, uint16_t length);
+uint8_t RtcI2cReadBufferInterrupt(uint8_t device, bool addr_word, uint8_t address, uint8_t *buffer, uint16_t length);
 uint8_t RtcI2cWriteByteInterrupt(uint8_t device, bool addr_word, uint8_t address, uint8_t b);
 uint8_t RtcI2cWriteBufferInterrupt(uint8_t device, bool addr_word, uint8_t address, uint8_t *buffer, uint16_t length);
 
