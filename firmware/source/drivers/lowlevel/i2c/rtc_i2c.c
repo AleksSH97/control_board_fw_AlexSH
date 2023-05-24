@@ -35,10 +35,10 @@
 #define I2C_SDA_Pin                   LL_GPIO_PIN_7
 #define I2C_SDA_GPIO_Port             GPIOB
 
-#define I2C_REQUEST_WRITE             (0x0000)
-#define I2C_REQUEST_READ              (0x0001)
+#define I2C_REQUEST_WRITE             (0x00)
+#define I2C_REQUEST_READ              (0x01)
 
-#define I2C_BUFFER_SIZE               (3u)
+#define I2C_BUFFER_SIZE               (4u)
 
 
 /******************************************************************************/
@@ -92,6 +92,7 @@ uint32_t prvGetTicks(void);
 uint8_t prvStartTransaction(uint8_t device, bool addr_word, uint8_t address);
 void prvResetSysTicks(void);
 void prvStopTx(void);
+void prvStopRx(void);
 
 
 /******************************************************************************/
@@ -141,6 +142,7 @@ uint8_t RtcI2cInit(void)
   rtc_i2c.buffer[0] = 0;
   rtc_i2c.buffer[1] = 0;
   rtc_i2c.buffer[2] = 0;
+  rtc_i2c.buffer[3] = 0;
   rtc_i2c.length = 0;
   rtc_i2c.result = false;
 
@@ -197,7 +199,9 @@ uint8_t RtcI2cGetDate(RTC_DATE_t *date)
   if (rc != osOK)
     return RTC_RECEIVE_ERROR;
 
-  rc = RtcI2cReadByte(RTC_HW_ADDRESS, RTC_REG_DAY, rtc_date_buffer, 4);
+  rc = RtcI2cReadBufferInterrupt(RTC_HW_ADDRESS, ADDR_BYTE, RTC_REG_DAY, rtc_date_buffer, 4);
+
+  //rc = RtcI2cReadByte(RTC_HW_ADDRESS, RTC_REG_DAY, rtc_date_buffer, 4);
 
   if (rc != RTC_OK)
   {
@@ -209,6 +213,8 @@ uint8_t RtcI2cGetDate(RTC_DATE_t *date)
   date->date  = ((rtc_date_buffer[1] >> 4) * 10) + (rtc_date_buffer[1] & 0x0F);
   date->month = ((rtc_date_buffer[2] & 0x10) ? 10 : 0) + (rtc_date_buffer[2] & 0x0F);
   date->year  = 2000 + ((rtc_date_buffer[2] & 0x80) ? 100 : 0) + ((rtc_date_buffer[3] >> 4) * 10) + (rtc_date_buffer[3] & 0x0F);
+
+//  osDelay(100);
 
   osSemaphoreRelease(RtcI2cSemphoreHandle);
 
@@ -227,7 +233,8 @@ uint8_t RtcI2cGetTime(RTC_TIME_t *time)
   if (rc != osOK)
     return RTC_RECEIVE_ERROR;
 
-  rc = RtcI2cReadByte(RTC_HW_ADDRESS, RTC_REG_SECONDS, rtc_time_buffer, 3);
+  rc = RtcI2cReadBufferInterrupt(RTC_HW_ADDRESS, ADDR_BYTE, RTC_REG_DAY, rtc_time_buffer, 3);
+
   if (rc != RTC_OK)
   {
     osSemaphoreRelease(RtcI2cSemphoreHandle);
@@ -291,9 +298,6 @@ uint8_t RtcI2cSetTime(RTC_TIME_t *time)
   write_buffer[1] = ((time->minutes / 10) << 4) | ((time->minutes % 10) & 0x0F);
   write_buffer[2] = ((time->hours   / 10) << 4) | ((time->hours   % 10) & 0x0F);
 
-//  if ((RtcI2cWriteByte(RTC_HW_ADDRESS, RTC_REG_SECONDS, write_buffer, 3)) != RTC_OK)
-//    return RTC_TRANSMIT_ERROR;
-
   if ((RtcI2cWriteBufferInterrupt(RTC_HW_ADDRESS, ADDR_BYTE, RTC_REG_SECONDS, write_buffer, 3)) != RTC_OK)
     return RTC_TRANSMIT_ERROR;
 
@@ -347,18 +351,17 @@ uint8_t RtcI2cReadBufferInterrupt(uint8_t device, bool addr_word, uint8_t addres
   osMutexAcquire(RtcI2cMutexHandle, osWaitForever);
 
   rtc_i2c.mode_write = false;
-
-  for (uint8_t i = 0; i < length; i++)
-  {
-    rtc_i2c.buffer[i] = buffer[i];
-  }
-
   rtc_i2c.length = length;
 
   res = prvStartTransaction(device, addr_word, address);
 
   if (res != RTC_OK)
     return RTC_RECEIVE_ERROR;
+
+  for (uint8_t i = 0; i < length; i++)
+  {
+    buffer[i] = rtc_i2c.buffer[i];
+  }
 
   osMutexRelease(RtcI2cMutexHandle);
 
@@ -407,14 +410,12 @@ uint8_t RtcI2cWriteBufferInterrupt(uint8_t device, bool addr_word, uint8_t addre
   osMutexAcquire(RtcI2cMutexHandle, osWaitForever);
 
   rtc_i2c.mode_write = true;
+  rtc_i2c.length = length;
 
   for (uint8_t i = 0; i < length; i++)
   {
     rtc_i2c.buffer[i] = buffer[i];
   }
-
-  rtc_i2c.length = length;
-  rtc_i2c.num_bytes = 0;
 
   res = prvStartTransaction(device, addr_word, address);
 
@@ -510,7 +511,7 @@ uint8_t RtcI2cWriteByte(uint8_t device, uint8_t address, uint8_t *buffer, uint16
 
   (void) I2C1->SR1;
 
-  LL_I2C_TransmitData8(I2C1, device | RTC_REQUEST_WRITE);
+  LL_I2C_TransmitData8(I2C1, device | I2C_REQUEST_WRITE);
 
   while(!LL_I2C_IsActiveFlag_ADDR(I2C1)){};
   LL_I2C_ClearFlag_ADDR(I2C1);
@@ -542,11 +543,12 @@ uint8_t prvStartTransaction(uint8_t device, bool addr_word, uint8_t address)
   rtc_i2c.address = address;
   rtc_i2c.repeated_start = false;
   rtc_i2c.address_sended = false;
+  rtc_i2c.num_bytes = 0;
 
   LL_I2C_EnableIT_EVT(I2C1);
   LL_I2C_EnableIT_ERR(I2C1);
 
-  LL_I2C_AcknowledgeNextData(I2C1, LL_I2C_ACK);
+  //LL_I2C_AcknowledgeNextData(I2C1, LL_I2C_ACK);
   LL_I2C_GenerateStartCondition(I2C1);
 
   return RTC_OK;
@@ -586,6 +588,20 @@ void prvStopTx(void)
 }
 /******************************************************************************/
 
+
+
+
+void prvStopRx(void)
+{
+  LL_I2C_DisableIT_EVT(I2C1);
+  LL_I2C_DisableIT_ERR(I2C1);
+  LL_I2C_GenerateStopCondition(I2C1);
+
+  rtc_i2c.mode_write = false;
+  rtc_i2c.length = 0;
+  rtc_i2c.num_bytes = 0;
+}
+/******************************************************************************/
 
 
 
@@ -639,7 +655,7 @@ void I2C1_EV_IRQHandler(void)
     if (LL_I2C_IsActiveFlag_SB(I2C1))
     {
       //Sending device I2C ID and requesting WRITING
-      LL_I2C_TransmitData8(I2C1, rtc_i2c.device | RTC_REQUEST_WRITE);
+      LL_I2C_TransmitData8(I2C1, rtc_i2c.device | I2C_REQUEST_WRITE);
     }
     if (LL_I2C_IsActiveFlag_ADDR(I2C1))
     {
@@ -659,6 +675,50 @@ void I2C1_EV_IRQHandler(void)
       if (rtc_i2c.num_bytes == rtc_i2c.length)
       {
         prvStopTx();
+      }
+      else
+      {
+        uint8_t unused = 0x00;
+        LL_I2C_TransmitData8(I2C1, unused);
+        PROJ_UNUSED(unused);
+      }
+    }
+  }
+  else
+  {
+    if (LL_I2C_IsActiveFlag_SB(I2C1))
+    {
+      if (rtc_i2c.repeated_start)
+        LL_I2C_TransmitData8(I2C1, rtc_i2c.device | I2C_REQUEST_READ);
+      else
+        LL_I2C_TransmitData8(I2C1, rtc_i2c.device | I2C_REQUEST_WRITE);
+    }
+    if (LL_I2C_IsActiveFlag_ADDR(I2C1))
+    {
+      if (rtc_i2c.repeated_start)
+      {
+        LL_I2C_ClearFlag_ADDR(I2C1);
+      }
+      else
+      {
+        LL_I2C_ClearFlag_ADDR(I2C1);
+        LL_I2C_TransmitData8(I2C1, (uint8_t) rtc_i2c.address);
+        LL_I2C_GenerateStartCondition(I2C1);
+        rtc_i2c.repeated_start = true;
+      }
+    }
+    if (LL_I2C_IsActiveFlag_RXNE(I2C1))
+    {
+      if (rtc_i2c.num_bytes < (rtc_i2c.length))
+      {
+        rtc_i2c.buffer[rtc_i2c.num_bytes] = LL_I2C_ReceiveData8(I2C1);
+        rtc_i2c.num_bytes++;
+      }
+      else
+      {
+        LL_I2C_AcknowledgeNextData(I2C1, LL_I2C_NACK);
+        rtc_i2c.buffer[(rtc_i2c.num_bytes)] = LL_I2C_ReceiveData8(I2C1);
+        prvStopRx();
       }
     }
   }
