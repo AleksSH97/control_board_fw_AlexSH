@@ -15,6 +15,7 @@
 #include <stdlib.h>
 
 #include "rtc.h"
+#include "rtc_i2c.h"
 
 
 /******************************************************************************/
@@ -128,6 +129,7 @@ uint8_t RtcInit(void)
   memset(&rtc_info, 0x00, sizeof(rtc_info));
   rtc_ok = false;
 
+  //if (RtcI2cReadBufferInterrupt(RTC_HW_ADDRESS, ADDR_BYTE, 0, &dummy, 1) == RTC_OK)
   if (RtcI2cReadByte(RTC_HW_ADDRESS, 0, &dummy, 1) == RTC_OK)
     rtc_ok = true;
 
@@ -137,6 +139,7 @@ uint8_t RtcInit(void)
 
   if (rtc_ok)
     RtcI2cWriteByte(RTC_HW_ADDRESS, RTC_REG_CONTROL, 0, 1);
+    //RtcI2cWriteBufferInterrupt(RTC_HW_ADDRESS, ADDR_BYTE, RTC_REG_CONTROL, 0, 1);
   else
     return RTC_INIT_ERROR;
 

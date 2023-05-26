@@ -88,9 +88,6 @@ void UARTSendByte(USART_TypeDef *USARTx, lwrb_t* buff)
 void UARTCallback(USART_TypeDef *USARTx, struct uart *uart_ptr)
 {
   if (USARTx == IOUART_Periph)
-  {
-    IndicationLedGreen();
     uart_ptr->fns.receive_byte(IOUART_Periph, *uart_ptr);
-  }
 }
 /******************************************************************************/

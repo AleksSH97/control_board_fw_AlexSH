@@ -38,9 +38,6 @@ extern "C" {
 /******************************************************************************/
 /* Public defines ----------------------------------------------------------- */
 /******************************************************************************/
-#define RTC_REQUEST_WRITE          (0x00)
-#define RTC_REQUEST_READ           (0x01)
-
 #define RTCRST_Pin                 LL_GPIO_PIN_0
 #define RTCRST_GPIO_Port           GPIOC
 #define RTCINT_Pin                 LL_GPIO_PIN_1
@@ -71,6 +68,9 @@ extern "C" {
 #define RTC_REGS_SRAM_OFFSET       (0x14)
 #define RTC_REGS_SRAM_LENGTH       (0xFF - 0x14)
 #define RTC_REGS_SRAM_END          (0xFF)
+
+#define ADDR_WORD          (true)
+#define ADDR_BYTE          (false)
 
 #define RTC_DATE_BUF_SIZE          (11u)
 #define RTC_TIME_BUF_SIZE          (8u)
