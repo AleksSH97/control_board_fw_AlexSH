@@ -233,7 +233,7 @@ uint8_t RtcI2cGetTime(RTC_TIME_t *time)
   if (rc != osOK)
     return RTC_RECEIVE_ERROR;
 
-  rc = RtcI2cReadBufferInterrupt(RTC_HW_ADDRESS, RTC_REG_DAY, rtc_time_buffer, 3);
+  rc = RtcI2cReadBufferInterrupt(RTC_HW_ADDRESS, RTC_REG_SECONDS, rtc_time_buffer, 3);
 
   if (rc != RTC_OK)
   {
