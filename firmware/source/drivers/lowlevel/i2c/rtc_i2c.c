@@ -198,17 +198,15 @@ uint8_t RtcI2cGetDate(RTC_DATE_t *date)
   uint8_t rtc_date_buffer[4];
   uint8_t rc;
 
-  //rc = osSemaphoreAcquire(RtcI2cSemphoreHandle, osWaitForever);
-//  if (rc != osOK)
-//    return RTC_RECEIVE_ERROR;
+  rc = osSemaphoreAcquire(RtcI2cSemphoreHandle, osWaitForever);
+  if (rc != osOK)
+    return RTC_RECEIVE_ERROR;
 
   rc = RtcI2cReadBufferInterrupt(RTC_HW_ADDRESS, RTC_REG_DAY, rtc_date_buffer, 4);
 
-  //rc = RtcI2cReadByte(RTC_HW_ADDRESS, RTC_REG_DAY, rtc_date_buffer, 4);
-
   if (rc != RTC_OK)
   {
-    //osSemaphoreRelease(RtcI2cSemphoreHandle);
+    osSemaphoreRelease(RtcI2cSemphoreHandle);
     return rc;
   }
 
@@ -217,9 +215,7 @@ uint8_t RtcI2cGetDate(RTC_DATE_t *date)
   date->month = ((rtc_date_buffer[2] & 0x10) ? 10 : 0) + (rtc_date_buffer[2] & 0x0F);
   date->year  = 2000 + ((rtc_date_buffer[2] & 0x80) ? 100 : 0) + ((rtc_date_buffer[3] >> 4) * 10) + (rtc_date_buffer[3] & 0x0F);
 
-//  osDelay(100);
-
-  //osSemaphoreRelease(RtcI2cSemphoreHandle);
+  osSemaphoreRelease(RtcI2cSemphoreHandle);
 
   return RTC_OK;
 }
@@ -324,11 +320,6 @@ uint8_t RtcI2cReadByteInterrupt(uint8_t device, uint8_t address, void *buffer, u
 
   rtc_i2c.mode_write = false;
 
-//  for (uint8_t i = 0; i < length; i++)
-//  {
-//    rtc_i2c.buffer[i] = buffer[i];
-//  }
-
   rtc_i2c.length = length;
 
   res = prvStartTransaction(device, address);
@@ -418,7 +409,6 @@ uint8_t RtcI2cWriteBufferInterrupt(uint8_t device, uint8_t address, uint8_t *buf
   rtc_i2c.mode_write = true;
   rtc_i2c.is_busy = false;
   rtc_i2c.length = length;
-//  buffer = rtc_i2c.buffer;
 
   for (uint8_t i = 0; i < length; i++)
   {
