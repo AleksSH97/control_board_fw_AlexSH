@@ -21,7 +21,6 @@
 /******************************************************************************/
 /* Private defines ---------------------------------------------------------- */
 /******************************************************************************/
-#define RTC_NUM_OF_ERRORS          (255u)
 
 
 /******************************************************************************/
@@ -78,7 +77,7 @@ void RtcTask(void *argument)
       continue;
     }
 
-    switch (RtcGetMode())
+    switch (RtcGetStatus())
     {
       case RTC_GET_DATE:
         error = RtcGetDate();
@@ -143,7 +142,7 @@ uint8_t RtcInit(void)
   else
     return RTC_INIT_ERROR;
 
-  if (RtcSetMode(RTC_IDLE) != RTC_OK)
+  if (RtcSetStatus(RTC_IDLE) != RTC_OK)
     return RTC_INIT_ERROR;
 
   return RTC_OK;
@@ -155,7 +154,7 @@ uint8_t RtcInit(void)
 
 /**
  * @brief          RTC set current date
- * @param[in]       buf: Pointer to @ref buffer with input date
+ * @param[in]      buf: Pointer to @ref buffer with input date
  * @return         Current error instance
  */
 uint8_t RtcSetDate(char *buf)
@@ -170,7 +169,7 @@ uint8_t RtcSetDate(char *buf)
   rtc_info.date_buf[10] = 0;
 
   if (rtc_info.date_buf == NULL)
-    return RTC_SET_DATE_BUFFER_ERROR;
+    return RTC_DATE_BUFFER_ERROR;
 
   date.date = atoi(&buf[0]);
   date.month = atoi(&buf[3]);
@@ -185,6 +184,9 @@ uint8_t RtcSetDate(char *buf)
 
   if (res == RTC_OK)
     PrintfConsoleCRLF(CLR_DEF"Date set "CLR_GR"successful"CLR_DEF);
+
+  if (RtcI2cSetMode(RTC_I2C_IDLE) != RTC_OK)
+    return RTC_TRANSMIT_ERROR;
 
   return res;
 }
@@ -206,7 +208,10 @@ uint8_t RtcGetDate(void)
   if(res == RTC_OK)
     PrintfConsoleCRLF(CLR_DEF"Date: %02u.%02u.%04u", rtc_info.date.date, rtc_info.date.month, rtc_info.date.year);
 
-  RtcSetMode(RTC_IDLE);
+  RtcSetStatus(RTC_IDLE);
+
+  if (RtcI2cSetMode(RTC_I2C_IDLE) != RTC_OK)
+    return RTC_RECEIVE_ERROR;
 
   return res;
 }
@@ -217,7 +222,7 @@ uint8_t RtcGetDate(void)
 
 /**
  * @brief          RTC set current time
- * @param[in]       buf: Pointer to buffer with input time
+ * @param[in]      buf: Pointer to buffer with input time
  * @return         Current error instance
  */
 uint8_t RtcSetTime(char *buf)
@@ -232,7 +237,7 @@ uint8_t RtcSetTime(char *buf)
   rtc_info.time_buf[8] = 0;
 
   if (rtc_info.time_buf == NULL)
-    return RTC_SET_DATE_BUFFER_ERROR;
+    return RTC_TIME_BUFFER_ERROR;
 
   time.hours   = atoi(&buf[0]);
   time.minutes = atoi(&buf[3]);
@@ -247,6 +252,9 @@ uint8_t RtcSetTime(char *buf)
 
   if (res == RTC_OK)
     PrintfConsoleCRLF(CLR_DEF"Time set "CLR_GR"successful"CLR_DEF);
+
+  if (RtcI2cSetMode(RTC_I2C_IDLE) != RTC_OK)
+    return RTC_TRANSMIT_ERROR;
 
   return res;
 }
@@ -269,7 +277,10 @@ uint8_t RtcGetTime(void)
     PrintfConsoleCRLF("\t"CLR_GR"RTC time %02u:%02u:%02u.%03u"CLR_DEF, rtc_info.time.hours, rtc_info.time.minutes,
         rtc_info.time.seconds, rtc_info.time.ms);
 
-  RtcSetMode(RTC_IDLE);
+  RtcSetStatus(RTC_IDLE);
+
+  if (RtcI2cSetMode(RTC_I2C_IDLE) != RTC_OK)
+    return RTC_RECEIVE_ERROR;
 
   return res;
 }
@@ -279,16 +290,16 @@ uint8_t RtcGetTime(void)
 
 
 /**
- * @brief          RTC set current mode
- * @param[in]      mode: mode which need to be set
+ * @brief          RTC set current status
+ * @param[in]      status: status which need to be set
  * @return         Current error instance
  */
-uint8_t RtcSetMode(RTC_MODE_t mode)
+uint8_t RtcSetStatus(RTC_STATUS_t status)
 {
-  if (mode > RTC_NUM_OF_ERRORS)
-    return RTC_SET_MODE_ERROR;
+  if (status > RTC_NUM_OF_STATES)
+    return RTC_SET_STATUS_ERROR;
 
-  rtc_info.mode = mode;
+  rtc_info.status = status;
 
   return RTC_OK;
 }
@@ -298,12 +309,12 @@ uint8_t RtcSetMode(RTC_MODE_t mode)
 
 
 /**
- * @brief          RTC get current mode
- * @return         rtc_info.mode: current mode instance
+ * @brief          RTC get current status
+ * @return         rtc_info.status: current status instance
  */
-RTC_MODE_t RtcGetMode(void)
+RTC_STATUS_t RtcGetStatus(void)
 {
-  return rtc_info.mode;
+  return rtc_info.status;
 }
 /******************************************************************************/
 
@@ -314,9 +325,14 @@ RTC_MODE_t RtcGetMode(void)
  * @brief          RTC set current error
  * @param[in]      error: error which need to be set
  */
-void RtcSetError(RTC_ERROR_t error)
+uint8_t RtcSetError(RTC_ERROR_t error)
 {
+  if (error > RTC_NUM_OF_ERRORS)
+    return RTC_SET_ERROR;
+
   rtc_info.error = error;
+
+  return RTC_OK;
 }
 /******************************************************************************/
 
@@ -383,25 +399,45 @@ void RtcErrorHandler(RTC_ERROR_t error)
     case RTC_OK:
       break;
     case RTC_INIT_ERROR:
-      PrintfConsoleCRLF(CLR_DEF"ERROR RTC: "CLR_RD"INIT"CLR_DEF);
+      PrintfConsoleCRLF("\t"CLR_DEF"ERROR RTC: "CLR_RD"INIT"CLR_DEF);
       break;
+    case RTC_I2C_INIT_ERROR:
+      PrintfConsoleCRLF("\t"CLR_DEF"ERROR RTC I2C: "CLR_RD"LOW LEVEL I2C INIT"CLR_DEF);
     case RTC_TRANSMIT_ERROR:
-      PrintfConsoleCRLF(CLR_DEF"ERROR RTC: "CLR_RD"TRANSMIT"CLR_DEF);
+      PrintfConsoleCRLF("\t"CLR_DEF"ERROR RTC: "CLR_RD"TRANSMIT"CLR_DEF);
       break;
     case RTC_RECEIVE_ERROR:
-      PrintfConsoleCRLF(CLR_DEF"ERROR RTC: "CLR_RD"RECEIVE"CLR_DEF);
+      PrintfConsoleCRLF("\t"CLR_DEF"ERROR RTC: "CLR_RD"RECEIVE"CLR_DEF);
       break;
-    case RTC_FLAG_ERROR:
-      PrintfConsoleCRLF(CLR_DEF"ERROR RTC: "CLR_RD"FLAG"CLR_DEF);
+    case RTC_I2C_TRANSMIT_ERROR:
+      PrintfConsoleCRLF("\t"CLR_DEF"ERROR RTC I2C: "CLR_RD"TRANSMIT"CLR_DEF);
+      break;
+    case RTC_I2C_RECEIVE_ERROR:
+      PrintfConsoleCRLF("\t"CLR_DEF"ERROR RTC I2C: "CLR_RD"RECEIVE"CLR_DEF);
+      break;
+    case RTC_SET_ERROR:
+      PrintfConsoleCRLF("\t"CLR_DEF"ERROR RTC: "CLR_RD"SET MODE STATUS"CLR_DEF);
+      break;
+    case RTC_SET_LL_I2C_MODE_ERROR:
+      PrintfConsoleCRLF("\t"CLR_DEF"ERROR RTC I2C: "CLR_RD"SET MODE OF LL I2C"CLR_DEF);
+      break;
+    case RTC_SET_STATUS_ERROR:
+      PrintfConsoleCRLF("\t"CLR_DEF"ERROR RTC: "CLR_RD"SET MODE STATUS"CLR_DEF);
       break;
     case RTC_CHECK_DATE_ERROR:
-      PrintfConsoleCRLF("\t"CLR_RD"ERROR: date format is not correct"CLR_DEF);
+      PrintfConsoleCRLF("\t"CLR_DEF"ERROR RTC: "CLR_RD"DATE FORMAT IS NOT CORRECT"CLR_DEF);
       break;
     case RTC_CHECK_TIME_ERROR:
-      PrintfConsoleCRLF("\t"CLR_RD"ERROR: time format is not correct"CLR_DEF);
+      PrintfConsoleCRLF("\t"CLR_DEF"ERROR RTC: "CLR_RD"TIME FORMAT IS NOT CORRECT"CLR_DEF);
+      break;
+    case RTC_DATE_BUFFER_ERROR:
+      PrintfConsoleCRLF("\t"CLR_DEF"ERROR RTC: "CLR_RD"SETTING BUFFER FOR DATE"CLR_DEF);
+      break;
+    case RTC_TIME_BUFFER_ERROR:
+      PrintfConsoleCRLF("\t"CLR_DEF"ERROR RTC: "CLR_RD"SETTING BUFFER FOR TIME"CLR_DEF);
       break;
     default:
-      PrintfConsoleCRLF(CLR_DEF"ERROR RTC: "CLR_RD"UNDEFINED"CLR_DEF);
+      PrintfConsoleCRLF("\t"CLR_DEF"ERROR RTC: "CLR_RD"UNDEFINED"CLR_DEF);
       break;
   }
 }

@@ -75,31 +75,49 @@ extern "C" {
 #define RTC_DATE_BUF_SIZE          (11u)
 #define RTC_TIME_BUF_SIZE          (8u)
 
+#define RTC_NUM_OF_STATES          (255u)
+#define RTC_NUM_OF_ERRORS          (255u)
+
 
 /******************************************************************************/
 /* Public variables --------------------------------------------------------- */
 /******************************************************************************/
-typedef enum {
+typedef enum
+{
   RTC_OK = 0x00,
   RTC_INIT_ERROR,
+  RTC_I2C_INIT_ERROR,
+
   RTC_TRANSMIT_ERROR,
   RTC_RECEIVE_ERROR,
-  RTC_FLAG_ERROR,
+
+  RTC_I2C_TRANSMIT_ERROR,
+  RTC_I2C_RECEIVE_ERROR,
+
   RTC_ZERO_POINTER_ERROR,
-  RTC_SET_MODE_ERROR,
-  RTC_SET_DATE_BUFFER_ERROR,
-  RTC_SET_TIME_BUFFER_ERROR,
+
+  RTC_SET_ERROR,
+  RTC_SET_LL_I2C_MODE_ERROR,
+  RTC_SET_STATUS_ERROR,
+
   RTC_CHECK_DATE_ERROR,
   RTC_CHECK_TIME_ERROR,
+  RTC_DATE_BUFFER_ERROR,
+  RTC_TIME_BUFFER_ERROR,
+
   RTC_UNDEFINED_ERROR = 0xFF
 } RTC_ERROR_t;
 
 typedef enum
 {
   RTC_GET_DATE = 0x00,
+  RTC_SET_DATE,
+
   RTC_GET_TIME,
+  RTC_SET_TIME,
+
   RTC_IDLE = 0xFF
-} RTC_MODE_t;
+} RTC_STATUS_t;
 
 typedef struct
 {
@@ -122,7 +140,7 @@ typedef struct
   RTC_TIME_t time;
   RTC_DATE_t date;
   RTC_ERROR_t error;
-  RTC_MODE_t mode;
+  RTC_STATUS_t status;
 
   char date_buf[RTC_DATE_BUF_SIZE];
   char time_buf[RTC_TIME_BUF_SIZE];
@@ -141,9 +159,9 @@ uint8_t RtcGetDate(void);
 uint8_t RtcSetDate(char *buf);
 uint8_t RtcSetTime(char *buf);
 uint8_t RtcGetTime(void);
-uint8_t RtcSetMode(RTC_MODE_t mode);
-RTC_MODE_t RtcGetMode(void);
-void RtcSetError(RTC_ERROR_t error);
+uint8_t RtcSetStatus(RTC_STATUS_t status);
+RTC_STATUS_t RtcGetStatus(void);
+uint8_t RtcSetError(RTC_ERROR_t error);
 RTC_ERROR_t RtcGetError(void);
 
 /******************************************************************************/

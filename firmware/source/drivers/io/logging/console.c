@@ -336,7 +336,7 @@ int ConsoleCalendar(microrl_t *microrl_ptr, int argc, const char * const *argv)
       {
         if (strcmp(argv[i], "?") == CONSOLE_MATCH)
         {
-          res = RtcSetMode(RTC_GET_DATE);
+          res = RtcSetStatus(RTC_GET_DATE);
           if (res != RTC_OK)
           {
             RtcSetError(res);
@@ -367,7 +367,7 @@ int ConsoleCalendar(microrl_t *microrl_ptr, int argc, const char * const *argv)
       {
         if (strcmp(argv[i], "?") == CONSOLE_MATCH)
         {
-          res = RtcSetMode(RTC_GET_TIME);
+          res = RtcSetStatus(RTC_GET_TIME);
           if (res != RTC_OK)
           {
             RtcSetError(res);
