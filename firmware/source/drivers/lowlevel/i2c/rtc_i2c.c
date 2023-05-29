@@ -40,6 +40,8 @@
 
 #define I2C_BUFFER_SIZE               (8u)
 
+#define RTC_I2C_NUM_OF_MODES          (255u)
+
 
 /******************************************************************************/
 /* Private variables -------------------------------------------------------- */
@@ -47,14 +49,16 @@
 static osMutexId_t RtcI2cMutexHandle;
 static osSemaphoreId_t RtcI2cSemphoreHandle;
 
-const osMutexAttr_t RtcI2cMutex_attr = {
+const osMutexAttr_t RtcI2cMutex_attr =
+{
   .name = "RtcI2cMutex",
   .attr_bits = osMutexRecursive,
   .cb_mem = NULL,
   .cb_size = 0U
 };
 
-const osSemaphoreAttr_t RtcI2cSemaphore_attr = {
+const osSemaphoreAttr_t RtcI2cSemaphore_attr =
+{
     .name = "RtcI2cSemaphore",
     .attr_bits = 0U,
     .cb_mem = NULL,
@@ -65,17 +69,14 @@ typedef struct
 {
   uint8_t     device;
   uint8_t     address;
-  uint8_t     byte;
   uint8_t     *buffer;
   uint8_t     length;
   uint8_t     num_bytes;
 
-  volatile bool        addr_word;
+  RTC_I2C_MODE_t  mode;
+
   volatile bool        mode_write;
-  volatile bool        address_sended;
   volatile bool        repeated_start;
-  volatile bool        result;
-  volatile bool        is_busy;
 } RTC_I2C_t;
 
 RTC_I2C_t rtc_i2c;
@@ -133,21 +134,20 @@ uint8_t RtcI2cInit(void)
   //(void) I2C1->SR2;
 
   rtc_i2c.device = 0;
-  rtc_i2c.addr_word = false;
   rtc_i2c.address = 0;
   rtc_i2c.mode_write = true;
-  rtc_i2c.address_sended = false;
   rtc_i2c.repeated_start = false;
   rtc_i2c.num_bytes = 0;
-  rtc_i2c.byte = 0;
   rtc_i2c.buffer = NULL;
   rtc_i2c.length = 0;
-  rtc_i2c.result = false;
 
   for (uint16_t i = 0; i < I2C_BUFFER_SIZE; i++)
   {
     i2c_buffer[i] = 0;
   }
+
+  if (RtcI2cSetMode(RTC_I2C_IDLE) != RTC_OK)
+    return RTC_I2C_INIT_ERROR;
 
   NVIC_SetPriority(I2C1_EV_IRQn, NVIC_EncodePriority(NVIC_GetPriorityGrouping(), 0x05, 0));
   NVIC_EnableIRQ(I2C1_EV_IRQn);
@@ -167,7 +167,7 @@ uint8_t RtcI2cInit(void)
   I2C_InitStruct.OwnAddrSize = LL_I2C_OWNADDRESS1_7BIT;
 
   if (LL_I2C_Init(I2C1, &I2C_InitStruct) != SUCCESS)
-    return RTC_INIT_ERROR;
+    return RTC_I2C_INIT_ERROR;
 
   LL_I2C_SetOwnAddress2(I2C1, 0);
   LL_I2C_Enable(I2C1);
@@ -176,13 +176,13 @@ uint8_t RtcI2cInit(void)
   RtcI2cSemphoreHandle = osSemaphoreNew(1, 1, &RtcI2cSemaphore_attr);
 
   if (RtcI2cMutexHandle == NULL)
-    return RTC_INIT_ERROR;
+    return RTC_I2C_INIT_ERROR;
 
   if (RtcI2cSemphoreHandle == NULL)
-    return RTC_INIT_ERROR;
+    return RTC_I2C_INIT_ERROR;
 
   if (prvRtcGPIOInit() != RTC_OK)
-    return RTC_INIT_ERROR;
+    return RTC_I2C_INIT_ERROR;
 
   systicks = 0UL;
 
@@ -219,7 +219,7 @@ uint8_t RtcI2cGetDate(RTC_DATE_t *date)
 
   return RTC_OK;
 }
- /******************************************************************************/
+/******************************************************************************/
 
 
 
@@ -241,6 +241,13 @@ uint8_t RtcI2cGetTime(RTC_TIME_t *time)
     return rc;
   }
 
+  // Get the milliseconds.
+  time->ms = prvGetTicks();
+
+  // Cap the milliseconds at 999.
+  if (time->ms > 999)
+    time->ms = 999;
+
   // Convert the time from binary to human-readable format.
   time->seconds = ((rtc_time_buffer[0] >> 4) * 10) + (rtc_time_buffer[0] & 0x0F);
   time->minutes = ((rtc_time_buffer[1] >> 4) * 10) + (rtc_time_buffer[1] & 0x0F);
@@ -250,13 +257,6 @@ uint8_t RtcI2cGetTime(RTC_TIME_t *time)
     time->hours = ((rtc_time_buffer[2] & 0x10) ? 10 : 0) + (rtc_time_buffer[2] & 0x0F);
   else
     time->hours = ((rtc_time_buffer[2] & 0x20) ? 20 : 0) + ((rtc_time_buffer[2] & 0x10) ? 10 : 0) + (rtc_time_buffer[2] & 0x0F);
-
-  // Get the milliseconds.
-  time->ms = prvGetTicks();
-
-  // Cap the milliseconds at 999.
-  if (time->ms > 999)
-    time->ms = 999;
 
   osSemaphoreRelease(RtcI2cSemphoreHandle);
 
@@ -316,10 +316,12 @@ uint8_t RtcI2cReadBufferInterrupt(uint8_t device, uint8_t address, uint8_t *buff
 {
   uint8_t res = RTC_OK;
 
+  if (RtcI2cSetMode(RTC_I2C_READ) != RTC_OK)
+    return RTC_I2C_INIT_ERROR;
+
   osMutexAcquire(RtcI2cMutexHandle, osWaitForever);
 
   rtc_i2c.mode_write = false;
-  rtc_i2c.is_busy = false;
   rtc_i2c.length = length;
 
   res = prvStartTransaction(device, address);
@@ -350,10 +352,12 @@ uint8_t RtcI2cWriteBufferInterrupt(uint8_t device, uint8_t address, uint8_t *buf
 {
   uint8_t res = RTC_OK;
 
+  if (RtcI2cSetMode(RTC_I2C_WRITE) != RTC_OK)
+    return RTC_I2C_INIT_ERROR;
+
   osMutexAcquire(RtcI2cMutexHandle, osWaitForever);
 
   rtc_i2c.mode_write = true;
-  rtc_i2c.is_busy = false;
   rtc_i2c.length = length;
 
   for (uint8_t i = 0; i < length; i++)
@@ -482,12 +486,43 @@ uint8_t RtcI2cWriteByte(uint8_t device, uint8_t address, uint8_t *buffer, uint16
 
 
 
+/**
+ * @brief          RTC_I2C get current mode
+ * @return         rtc_i2c.mode: mode status instance
+ */
+uint8_t RtcI2cGetMode(void)
+{
+  return rtc_i2c.mode;
+}
+/******************************************************************************/
+
+
+
+
+/**
+ * @brief          RTC set current status
+ * @param[in]      status: status which need to be set
+ * @return         Current error instance
+ */
+uint8_t RtcI2cSetMode(RTC_I2C_MODE_t mode)
+{
+  if (mode > RTC_I2C_NUM_OF_MODES)
+    return RTC_SET_MODE_ERROR;
+
+  rtc_i2c.mode = mode;
+
+  return RTC_OK;
+}
+/******************************************************************************/
+
+
+
+
 uint8_t prvStartTransaction(uint8_t device, uint8_t address)
 {
   rtc_i2c.device = device;
   rtc_i2c.address = address;
   rtc_i2c.repeated_start = false;
-  rtc_i2c.address_sended = false;
 
   LL_I2C_EnableIT_EVT(I2C1);
   LL_I2C_EnableIT_BUF(I2C1);
@@ -528,7 +563,6 @@ void prvStopTx(void)
   LL_I2C_GenerateStopCondition(I2C1);
 
   rtc_i2c.mode_write = false;
-  rtc_i2c.is_busy = false;
   rtc_i2c.num_bytes = 0;
   rtc_i2c.length = 0;
 }
@@ -544,7 +578,6 @@ void prvStopRx(void)
   LL_I2C_GenerateStopCondition(I2C1);
 
   rtc_i2c.mode_write = false;
-  rtc_i2c.is_busy = false;
   rtc_i2c.num_bytes = 0;
   rtc_i2c.length = 0;
 }
@@ -597,7 +630,7 @@ uint8_t prvRtcGPIOInit(void)
  */
 void I2C1_EV_IRQHandler(void)
 {
-  if (rtc_i2c.mode_write)
+  if (RtcI2cGetMode() == RTC_I2C_WRITE)
   {
     if (LL_I2C_IsActiveFlag_SB(I2C1))
     {
@@ -624,7 +657,7 @@ void I2C1_EV_IRQHandler(void)
       }
     }
   }
-  else
+  else if (RtcI2cGetMode() == RTC_I2C_READ)
   {
     if (LL_I2C_IsActiveFlag_SB(I2C1))
     {

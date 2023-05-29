@@ -37,7 +37,13 @@ extern "C" {
 /******************************************************************************/
 /* Public variables --------------------------------------------------------- */
 /******************************************************************************/
+typedef enum
+{
+  RTC_I2C_READ = 0x00,
+  RTC_I2C_WRITE,
 
+  RTC_I2C_IDLE = 0xFF,
+} RTC_I2C_MODE_t;
 
 /******************************************************************************/
 /* Public functions --------------------------------------------------------- */
@@ -50,6 +56,8 @@ uint8_t RtcI2cReadBufferInterrupt(uint8_t device, uint8_t address, uint8_t *buff
 uint8_t RtcI2cWriteByteInterrupt(uint8_t device, uint8_t address, uint8_t b);
 uint8_t RtcI2cWriteBufferInterrupt(uint8_t device, uint8_t address, uint8_t *buffer, uint8_t length);
 
+uint8_t RtcI2cGetMode(void);
+uint8_t RtcI2cSetMode(RTC_I2C_MODE_t mode);
 
 uint8_t RtcI2cGetDate(RTC_DATE_t *date);
 uint8_t RtcI2cGetTime(RTC_TIME_t *time);
