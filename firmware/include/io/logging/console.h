@@ -24,10 +24,9 @@
 #include <stdio.h>
 #include <stdbool.h>
 
-#include "uart.h"
 #include "log.h"
+#include "rtc.h"
 #include "microrl.h"
-#include "accelero_spi.h"
 #include "microrl_config.h"
 
 #ifdef __cplusplus
@@ -44,6 +43,10 @@ extern "C" {
 #ifndef CONSOLE_NO_PASSW
 #define CONSOLE_NO_PASSW                1
 #endif
+
+
+/******************************************************************************/
+/* Public variables --------------------------------------------------------- */
 /******************************************************************************/
 
 
@@ -58,20 +61,19 @@ void ConsoleClearScreenSetup(void);
 int ConsoleExecute(microrl_t *microrl_ptr, int argc, const char * const *argv);
 int ConsoleExecuteMain(microrl_t* microrl_ptr, int argc, const char* const *argv);
 int ConsoleBuff(microrl_t *microrl_ptr, int argc, const char * const *argv);
+int ConsoleCalendar(microrl_t *microrl_ptr, int argc, const char * const *argv);
 int ConsoleAudio(microrl_t *microrl_ptr, int argc, const char * const *argv);
 int ConsoleAccelerometer(microrl_t *microrl_ptr, int argc, const char * const *argv);
-char **ConsoleComplete(microrl_t *microrl_ptr, int argc, const char * const *argv);
+char **ConsoleComplete(int argc, const char * const *argv);
 
 void ConsoleGetVersion(char* ver_str);
 void ConsoleInsertChar(char ch);
 
-void ConsolePrintHelp(microrl_t *microrl_ptr);
+void ConsolePrintHelp(void);
 void ConsolePrintBuff(microrl_t *microrl_ptr);
 void ConsolePrintWelcome(microrl_t *microrl_ptr);
 void ConsolePrintVisualizer(microrl_t *microrl_ptr);
-void ConsolePrintAccelerometer(microrl_t *microrl_ptr);
 void ConsoleSigint(microrl_t *microrl_ptr);
-
 
 /******************************************************************************/
 

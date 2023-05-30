@@ -255,8 +255,8 @@ extern "C" {
  * \}
  */
 
-#define MICRORL_VERSION_MAJOR                 2
-#define MICRORL_VERSION_MINOR                 5
+#define MICRORL_VERSION_MAJOR                 0
+#define MICRORL_VERSION_MINOR                 2
 #define MICRORL_VERSION_PATCH                 0
 
 #ifdef __cplusplus

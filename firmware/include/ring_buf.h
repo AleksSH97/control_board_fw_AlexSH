@@ -1,8 +1,8 @@
 /**
  ******************************************************************************
- * @file           : button.h
+ * @file           : ring_buf.h
  * @author         : Aleksandr Shabalin    <alexnv97@gmail.com>
- * @brief          : Header file for button
+ * @brief          : Header file for ring buffer
  ******************************************************************************
  * ----------------- Copyright (c) 2023 Aleksandr Shabalin ------------------ *
  ******************************************************************************
@@ -13,20 +13,15 @@
  */
 
 /* Define to prevent recursive inclusion -------------------------------------*/
-#ifndef BUTTON_H_
-#define BUTTON_H_
+#ifndef RING_BUF_H_
+#define RING_BUF_H_
 
 
 /******************************************************************************/
 /* Includes ----------------------------------------------------------------- */
 /******************************************************************************/
-#include <stdint.h>
-#include <stdbool.h>
-
-#include "tim.h"
-#include "stm32f4xx_hal.h"
-#include "log.h"
-#include "indication.h"
+#include "lwrb.h"
+#include "uart.h"
 
 #ifdef __cplusplus
 extern "C" {
@@ -34,31 +29,12 @@ extern "C" {
 
 
 /******************************************************************************/
-/* Public defines ----------------------------------------------------------- */
-/******************************************************************************/
-#define BUTTON_DEBOUNCE_TIME_MS    (50u)
-
-#define BUTTON_Pin          GPIO_PIN_0
-#define BUTTON_GPIO_Port    GPIOA
-
-
-/******************************************************************************/
-/* Public variables --------------------------------------------------------- */
-/******************************************************************************/
-enum button_mode {
-	BUTTON_ONE_CLICK = 0,
-	BUTTON_DOUBLE_CLICK,
-	BUTTON_HELD_PRESSED
-};
-
-
-/******************************************************************************/
 /* Public functions --------------------------------------------------------- */
 /******************************************************************************/
-void ButtonInit(void);
-bool ButtonIsPushed(void);
-void ButtonCheckMode(void);
-void ButtonTask(void *argumet);
+void RingBuffInit(lwrb_t *lwrb_ptr, uint8_t *buff);
+void RingBufMicrophoneInit(void);
+void RingBufAcceleroInit(void);
+void RingBufEvtCallback(struct uart *self, lwrb_evt_type_t evt, size_t bp);
 
 
 /******************************************************************************/
@@ -69,4 +45,4 @@ void ButtonTask(void *argumet);
 #endif /* __cplusplus */
 
 
-#endif /* BUTTON_H_ */
+#endif /* RING_BUF_H_ */

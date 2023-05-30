@@ -1,8 +1,8 @@
 /**
  ******************************************************************************
- * @file           : button.h
+ * @file           : io_uart.h
  * @author         : Aleksandr Shabalin    <alexnv97@gmail.com>
- * @brief          : Header file for button
+ * @brief          : Header file of IO UART
  ******************************************************************************
  * ----------------- Copyright (c) 2023 Aleksandr Shabalin ------------------ *
  ******************************************************************************
@@ -13,8 +13,8 @@
  */
 
 /* Define to prevent recursive inclusion -------------------------------------*/
-#ifndef BUTTON_H_
-#define BUTTON_H_
+#ifndef LOWLEVEL_UART_IO_UART_H_
+#define LOWLEVEL_UART_IO_UART_H_
 
 
 /******************************************************************************/
@@ -23,42 +23,51 @@
 #include <stdint.h>
 #include <stdbool.h>
 
-#include "tim.h"
-#include "stm32f4xx_hal.h"
 #include "log.h"
-#include "indication.h"
+#include "uart.h"
+
+#include "stm32f4xx.h"
+#include "stm32f4xx_ll_bus.h"
+#include "stm32f4xx_ll_gpio.h"
+#include "stm32f4xx_ll_usart.h"
+#include "stm32f4xx_ll_rcc.h"
 
 #ifdef __cplusplus
 extern "C" {
-#endif /* __cplusplus */
+#endif
 
 
 /******************************************************************************/
 /* Public defines ----------------------------------------------------------- */
 /******************************************************************************/
-#define BUTTON_DEBOUNCE_TIME_MS    (50u)
+#define IOUART_TX_Pin                 LL_GPIO_PIN_10
+#define IOUART_RX_Pin                 LL_GPIO_PIN_11
+#define IOUART_Port                   GPIOC
+#define IOUART_GPIO_AF                LL_GPIO_AF_8
 
-#define BUTTON_Pin          GPIO_PIN_0
-#define BUTTON_GPIO_Port    GPIOA
+#define IOUART_Periph                 UART4
+#define IOUART_ENABLE_CLOCK()         LL_APB1_GRP1_EnableClock(LL_APB1_GRP1_PERIPH_UART4)
+#define IOUART_IRQn                   UART4_IRQn
+#define IOUART_IRQHandler             UART4_IRQHandler
+
+#define IOUART_RX_RB_SIZE             (64U)
+#define IOUART_TX_RB_SIZE             (512U)
+
+#define IOUART_RX_QUEUE_SIZE          (128U)
+
+#define PROJ_UNUSED(x)                ((void)(x))
 
 
 /******************************************************************************/
 /* Public variables --------------------------------------------------------- */
 /******************************************************************************/
-enum button_mode {
-	BUTTON_ONE_CLICK = 0,
-	BUTTON_DOUBLE_CLICK,
-	BUTTON_HELD_PRESSED
-};
+extern struct uart io_uart;
 
 
 /******************************************************************************/
 /* Public functions --------------------------------------------------------- */
 /******************************************************************************/
-void ButtonInit(void);
-bool ButtonIsPushed(void);
-void ButtonCheckMode(void);
-void ButtonTask(void *argumet);
+void IoUartInit(void);
 
 
 /******************************************************************************/
@@ -66,7 +75,7 @@ void ButtonTask(void *argumet);
 
 #ifdef __cplusplus
 }
-#endif /* __cplusplus */
+#endif
 
 
-#endif /* BUTTON_H_ */
+#endif /* LOWLEVEL_UART_IO_UART_H_ */

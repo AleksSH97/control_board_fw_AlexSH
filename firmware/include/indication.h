@@ -22,10 +22,10 @@
 /******************************************************************************/
 #include <stdbool.h>
 
-#include "main.h"
 #include "log.h"
 #include "led.h"
 #include "stm32f4xx_hal.h"
+#include "stm32f4xx_ll_gpio.h"
 
 
 /******************************************************************************/
@@ -36,6 +36,30 @@
 #define INDICATION_LED_ERROR_NUM                  (2u)
 #define INDICATION_LED_BUTTON_NUM                 (1u)
 
+#define N_LED                          (3u)
+
+#define LED_RD_Pin                   LL_GPIO_PIN_13
+#define LED_RD_GPIO_Port             GPIOC
+#define LED_YL_Pin                   LL_GPIO_PIN_14
+#define LED_YL_GPIO_Port             GPIOC
+#define LED_GR_Pin                   LL_GPIO_PIN_15
+#define LED_GR_GPIO_Port             GPIOC
+
+#define ZERO_MS                      (0u)
+
+#define LED_RD_TIME_ON               (100u)
+#define LED_YL_TIME_ON               (130u)
+#define LED_GR_TIME_ON               (160u)
+#define LED_RIGHT_TIME_ON            (190u)
+
+#define LED_RD_TIME_OFF              (130u)
+#define LED_YL_TIME_OFF              (160u)
+#define LED_GR_TIME_OFF              (190u)
+#define LED_RIGHT_TIME_OFF           (220u)
+
+#define LED_TIME_ON                  (80u)
+#define LED_TIME_OFF                 (150u)
+=======
 #define N_LED                          (4u)
 
 #define LED_LEFT_Pin                   GPIO_PIN_12
@@ -67,10 +91,9 @@
 /* Public variables --------------------------------------------------------- */
 /******************************************************************************/
 enum indication_led_id {
-	LED_TOP = 0,
-	LED_LEFT,
-	LED_BOTTOM,
-	LED_RIGHT
+	LED_RD = 0,
+	LED_YL,
+	LED_GR,
 };
 
 enum indication_led_speed {
@@ -93,8 +116,8 @@ extern mculed_t mculed[N_LED];
 /* Public functions --------------------------------------------------------- */
 /******************************************************************************/
 void IndicationInit(void);
-void IndicationLedTop(void);
-void IndicationLedBottom(void);
+void IndicationLedYellow(void);
+void IndicationLedGreen(void);
 void IndicationLedLeft(void);
 void IndicationLedRight(void);
 void IndicationLedLoading(void);

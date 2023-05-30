@@ -1,8 +1,8 @@
 /**
  ******************************************************************************
- * @file           : button.h
+ * @file           : rtc_i2c.h
  * @author         : Aleksandr Shabalin    <alexnv97@gmail.com>
- * @brief          : Header file for button
+ * @brief          : Header file of RTC I2C
  ******************************************************************************
  * ----------------- Copyright (c) 2023 Aleksandr Shabalin ------------------ *
  ******************************************************************************
@@ -12,10 +12,8 @@
  ******************************************************************************
  */
 
-/* Define to prevent recursive inclusion -------------------------------------*/
-#ifndef BUTTON_H_
-#define BUTTON_H_
-
+#ifndef LOWLEVEL_I2C_RTC_I2C_H_
+#define LOWLEVEL_I2C_RTC_I2C_H_
 
 /******************************************************************************/
 /* Includes ----------------------------------------------------------------- */
@@ -23,42 +21,48 @@
 #include <stdint.h>
 #include <stdbool.h>
 
-#include "tim.h"
-#include "stm32f4xx_hal.h"
-#include "log.h"
-#include "indication.h"
-
 #ifdef __cplusplus
 extern "C" {
-#endif /* __cplusplus */
+#endif
 
 
 /******************************************************************************/
 /* Public defines ----------------------------------------------------------- */
 /******************************************************************************/
-#define BUTTON_DEBOUNCE_TIME_MS    (50u)
-
-#define BUTTON_Pin          GPIO_PIN_0
-#define BUTTON_GPIO_Port    GPIOA
+#define ADDR_WORD          (true)
+#define ADDR_BYTE          (false)
+#define PROJ_UNUSED(x)     ((void)(x))
 
 
 /******************************************************************************/
 /* Public variables --------------------------------------------------------- */
 /******************************************************************************/
-enum button_mode {
-	BUTTON_ONE_CLICK = 0,
-	BUTTON_DOUBLE_CLICK,
-	BUTTON_HELD_PRESSED
-};
+typedef enum
+{
+  RTC_I2C_READ = 0x00,
+  RTC_I2C_WRITE,
 
+  RTC_I2C_IDLE = 0xFF,
+} RTC_I2C_MODE_t;
 
 /******************************************************************************/
 /* Public functions --------------------------------------------------------- */
 /******************************************************************************/
-void ButtonInit(void);
-bool ButtonIsPushed(void);
-void ButtonCheckMode(void);
-void ButtonTask(void *argumet);
+uint8_t RtcI2cInit(void);
+uint8_t RtcI2cReadByte(uint8_t device, uint8_t address, uint8_t *buffer, uint16_t num_bytes);
+uint8_t RtcI2cWriteByte(uint8_t device, uint8_t address, uint8_t *buffer, uint16_t num_bytes);
+uint8_t RtcI2cReadByteInterrupt(uint8_t device, uint8_t address, void *buffer, uint8_t length);
+uint8_t RtcI2cReadBufferInterrupt(uint8_t device, uint8_t address, uint8_t *buffer, uint8_t length);
+uint8_t RtcI2cWriteByteInterrupt(uint8_t device, uint8_t address, uint8_t b);
+uint8_t RtcI2cWriteBufferInterrupt(uint8_t device, uint8_t address, uint8_t *buffer, uint8_t length);
+
+uint8_t RtcI2cGetMode(void);
+uint8_t RtcI2cSetMode(RTC_I2C_MODE_t mode);
+
+uint8_t RtcI2cGetDate(RTC_DATE_t *date);
+uint8_t RtcI2cGetTime(RTC_TIME_t *time);
+uint8_t RtcI2cSetDate(RTC_DATE_t *date);
+uint8_t RtcI2cSetTime(RTC_TIME_t *time);
 
 
 /******************************************************************************/
@@ -66,7 +70,6 @@ void ButtonTask(void *argumet);
 
 #ifdef __cplusplus
 }
-#endif /* __cplusplus */
+#endif
 
-
-#endif /* BUTTON_H_ */
+#endif /* LOWLEVEL_I2C_RTC_I2C_H_ */

@@ -145,9 +145,6 @@ void prvButtonCheckAlgorithm(struct user_button *user_button_ptr)
 	if ((TimStarted(&user_button.debounce_timeout)) && (TimCheck(&user_button.debounce_timeout, 350))) {
 		switch (user_button_ptr->mode) {
 		    case BUTTON_ONE_CLICK:
-		        if(!UARTSendByte(&huart3, 0x02)) {
-		            IndicationLedError();
-		        }
 		        IndicationLedButton();
 			   	break;
 		    case BUTTON_DOUBLE_CLICK:

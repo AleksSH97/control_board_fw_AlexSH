@@ -13,7 +13,6 @@
 /* Includes ----------------------------------------------------------------- */
 /******************************************************************************/
 #include "log.h"
-#include "uart.h"
 
 #include "lwprintf/lwprintf.h"
 
@@ -65,11 +64,11 @@ static int prvLwprintfConsoleOut(int ch, lwprintf_t* p);
  */
 void LogInit(void)
 {
-    consoleQueueHandle = osMessageQueueNew(512, sizeof(uint8_t), &consoleQueueAttributes);
-    logsQueueHandle = osMessageQueueNew(512, sizeof(uint8_t), &logsQueueAttributes);
+  consoleQueueHandle = osMessageQueueNew(512, sizeof(uint8_t), &consoleQueueAttributes);
+  logsQueueHandle = osMessageQueueNew(512, sizeof(uint8_t), &logsQueueAttributes);
 
-    lwprintf_init_ex(&console, prvLwprintfConsoleOut);
-    lwprintf_init_ex(&logs, prvLwprintfLogsOut);
+  lwprintf_init_ex(&console, prvLwprintfConsoleOut);
+  lwprintf_init_ex(&logs, prvLwprintfLogsOut);
 }
 /******************************************************************************/
 
@@ -81,8 +80,8 @@ void LogInit(void)
  */
 void LogClearQueues(void)
 {
-    osMessageQueueReset(logsQueueHandle);
-    osMessageQueueReset(consoleQueueHandle);
+  osMessageQueueReset(logsQueueHandle);
+  osMessageQueueReset(consoleQueueHandle);
 }
 /******************************************************************************/
 
@@ -94,18 +93,18 @@ void LogClearQueues(void)
  */
 int PrintfLogs(const char *fmt, ...)
 {
-    if (IoSystemGetMode() != IO_LOGS) {
-        return 0;
-    }
+  if (IoSystemGetMode() != IO_LOGS) {
+    return 0;
+  }
 
-    va_list args;
-    int len;
+  va_list args;
+  int len;
 
-    va_start(args, fmt);
-    len = lwprintf_vprintf_ex(&logs, fmt, args);
-    va_end(args);
+  va_start(args, fmt);
+  len = lwprintf_vprintf_ex(&logs, fmt, args);
+  va_end(args);
 
-    return (len);
+  return (len);
 }
 /******************************************************************************/
 
@@ -117,18 +116,18 @@ int PrintfLogs(const char *fmt, ...)
  */
 int PrintfConsole(const char *fmt, ...)
 {
-    if (IoSystemGetMode() != IO_CONSOLE) {
-        return 0;
-    }
+  if (IoSystemGetMode() != IO_CONSOLE) {
+    return 0;
+  }
 
-    va_list args;
-    int len;
+  va_list args;
+  int len;
 
-    va_start(args, fmt);
-    len = lwprintf_vprintf_ex(&console, fmt, args);
-    va_end(args);
+  va_start(args, fmt);
+  len = lwprintf_vprintf_ex(&console, fmt, args);
+  va_end(args);
 
-    return (len);
+  return (len);
 }
 /******************************************************************************/
 
@@ -140,15 +139,15 @@ int PrintfConsole(const char *fmt, ...)
  */
 static int prvLwprintfLogsOut(int ch, lwprintf_t* p)
 {
-    uint8_t c = (uint8_t)ch;
+  uint8_t c = (uint8_t)ch;
 
-    if (c == '\0') {
-        return ch;           //to prevent printing '0' in the end of any (char*)
-    }
+  if (c == '\0') {
+    return ch;           //to prevent printing '0' in the end of any (char*)
+  }
 
-    osMessageQueuePut(logsQueueHandle, &ch, 0, 200);
+  osMessageQueuePut(logsQueueHandle, &ch, 0, 100);
 
-    return (ch);
+  return (ch);
 }
 /******************************************************************************/
 
@@ -160,15 +159,31 @@ static int prvLwprintfLogsOut(int ch, lwprintf_t* p)
  */
 static int prvLwprintfConsoleOut(int ch, lwprintf_t* p)
 {
-    uint8_t c = (uint8_t)ch;
+  uint8_t c = (uint8_t)ch;
 
-    if (c == '\0') {
-        return ch;           //to prevent printing '0' in the end of any (char*)
-    }
+  if (c == '\0') {
+    return ch;           //to prevent printing '0' in the end of any (char*)
+  }
 
-    osMessageQueuePut(consoleQueueHandle, &ch, 0, 200);
+  osMessageQueuePut(consoleQueueHandle, &ch, 0, 100);
 
-    return (ch);
+  return (ch);
+}
+/******************************************************************************/
+
+
+
+
+/**
+ * @brief          Print error message at the start
+ */
+void LogPrintErrorMsg(void)
+{
+  PrintfLogsCRLF(CLR_DEF"");
+  PrintfLogsCRLF("");
+  PrintfLogsCRLF(CLR_RD "ERROR INIT UART");
+  PrintfLogsCRLF(CLR_DEF"");
+  PrintfLogsCRLF("");
 }
 /******************************************************************************/
 
@@ -180,10 +195,10 @@ static int prvLwprintfConsoleOut(int ch, lwprintf_t* p)
  */
 void LogPrintWelcomeMsg(void)
 {
-    PrintfLogsCRLF(CLR_DEF"");
-    PrintfLogsCRLF("");
-    PrintfLogsCRLF("\tWelcome to STM32F407 Discovery firmware with" CLR_RD " FreeRTOS");
-    PrintfLogsCRLF(CLR_DEF"");
-    PrintfLogsCRLF("");
+  PrintfLogsCRLF(CLR_DEF"");
+  PrintfLogsCRLF("");
+  PrintfLogsCRLF(CLR_MG"Welcome to ESS control board firmware by" CLR_RD " AlexSH");
+  PrintfLogsCRLF(CLR_DEF"");
+  PrintfLogsCRLF("");
 }
 /******************************************************************************/
