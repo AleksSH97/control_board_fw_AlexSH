@@ -59,6 +59,32 @@
 
 #define LED_TIME_ON                  (80u)
 #define LED_TIME_OFF                 (150u)
+=======
+#define N_LED                          (4u)
+
+#define LED_LEFT_Pin                   GPIO_PIN_12
+#define LED_LEFT_GPIO_Port             GPIOD
+#define LED_TOP_Pin                    GPIO_PIN_13
+#define LED_TOP_GPIO_Port              GPIOD
+#define LED_RIGHT_Pin                  GPIO_PIN_14
+#define LED_RIGHT_GPIO_Port            GPIOD
+#define LED_BOTTOM_Pin                 GPIO_PIN_15
+#define LED_BOTTOM_GPIO_Port           GPIOD
+
+#define ZERO_MS                        (0u)
+
+#define LED_TOP_TIME_ON                (100u)
+#define LED_LEFT_TIME_ON               (130u)
+#define LED_BOTTOM_TIME_ON             (160u)
+#define LED_RIGHT_TIME_ON              (190u)
+
+#define LED_TOP_TIME_OFF               (130u)
+#define LED_LEFT_TIME_OFF              (160u)
+#define LED_BOTTOM_TIME_OFF            (190u)
+#define LED_RIGHT_TIME_OFF             (220u)
+
+#define LED_TIME_ON                    (2000u)
+#define LED_TIME_OFF                   (6000u)
 
 
 /******************************************************************************/
