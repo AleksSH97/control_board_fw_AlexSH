@@ -54,7 +54,7 @@ uint8_t prvGetTime(RTC_TIME_t *time);
 
 /**
  * @brief          RTC task
- * @param[in]       argument: Pointer to *argument for FreeRTOS
+ * @param[in]      argument: Pointer to *argument for FreeRTOS
  */
 void RtcTask(void *argument)
 {
@@ -68,7 +68,8 @@ void RtcTask(void *argument)
     return;
   }
 
-  for (;;) {
+  for (;;)
+  {
 
     if (RtcGetError() != RTC_OK)
     {

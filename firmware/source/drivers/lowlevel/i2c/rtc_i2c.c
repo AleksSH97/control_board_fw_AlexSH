@@ -102,6 +102,7 @@ void prvStopRx(void);
 
 /**
  * @brief          RTC I2C init
+ * @return         Current error instance
  */
 uint8_t RtcI2cInit(void)
 {
@@ -129,9 +130,6 @@ uint8_t RtcI2cInit(void)
 
   LL_APB1_GRP1_EnableClock(LL_APB1_GRP1_PERIPH_I2C1);
   __DSB();
-
-  //To prevent SB flag
-  //(void) I2C1->SR2;
 
   rtc_i2c.device = 0;
   rtc_i2c.address = 0;
@@ -193,6 +191,11 @@ uint8_t RtcI2cInit(void)
 
 
 
+/**
+ * @brief          RTC I2C get date
+ * @param[in]      date: pointer to @ref RTC_DATE_t structure
+ * @return         Current error instance
+ */
 uint8_t RtcI2cGetDate(RTC_DATE_t *date)
 {
   uint8_t rtc_date_buffer[4];
@@ -200,7 +203,7 @@ uint8_t RtcI2cGetDate(RTC_DATE_t *date)
 
   rc = osSemaphoreAcquire(RtcI2cSemphoreHandle, osWaitForever);
   if (rc != osOK)
-    return RTC_RECEIVE_ERROR;
+    return RTC_I2C_RECEIVE_ERROR;
 
   rc = RtcI2cReadBufferInterrupt(RTC_HW_ADDRESS, RTC_REG_DAY, rtc_date_buffer, 4);
 
@@ -224,6 +227,11 @@ uint8_t RtcI2cGetDate(RTC_DATE_t *date)
 
 
 
+/**
+ * @brief          RTC I2C get time
+ * @param[in]      time: pointer to @ref RTC_TIME_t structure
+ * @return         Current error instance
+ */
 uint8_t RtcI2cGetTime(RTC_TIME_t *time)
 {
   uint8_t rtc_time_buffer[3];
@@ -231,7 +239,7 @@ uint8_t RtcI2cGetTime(RTC_TIME_t *time)
 
   rc = osSemaphoreAcquire(RtcI2cSemphoreHandle, osWaitForever);
   if (rc != osOK)
-    return RTC_RECEIVE_ERROR;
+    return RTC_I2C_RECEIVE_ERROR;
 
   rc = RtcI2cReadBufferInterrupt(RTC_HW_ADDRESS, RTC_REG_SECONDS, rtc_time_buffer, 3);
 
@@ -267,6 +275,11 @@ uint8_t RtcI2cGetTime(RTC_TIME_t *time)
 
 
 
+/**
+ * @brief          RTC I2C set date
+ * @param[in]      date: pointer to @ref RTC_DATE_t structure
+ * @return         Current error instance
+ */
 uint8_t RtcI2cSetDate(RTC_DATE_t *date)
 {
   uint8_t write_buffer[3];
@@ -278,7 +291,7 @@ uint8_t RtcI2cSetDate(RTC_DATE_t *date)
   write_buffer[2] = ((date->year  / 10) << 4) | ((date->year  % 10) & 0x0F);
 
   if ((RtcI2cWriteBufferInterrupt(RTC_HW_ADDRESS, RTC_REG_DATE, write_buffer, 3)) != RTC_OK)
-    return RTC_TRANSMIT_ERROR;
+    return RTC_I2C_TRANSMIT_ERROR;
 
   osSemaphoreRelease(RtcI2cSemphoreHandle);
   return RTC_OK;
@@ -288,6 +301,11 @@ uint8_t RtcI2cSetDate(RTC_DATE_t *date)
 
 
 
+/**
+ * @brief          RTC I2C set time
+ * @param[in]      time: pointer to @ref RTC_TIME_t structure
+ * @return         Current error instance
+ */
 uint8_t RtcI2cSetTime(RTC_TIME_t *time)
 {
   uint8_t write_buffer[3];
@@ -299,7 +317,7 @@ uint8_t RtcI2cSetTime(RTC_TIME_t *time)
   write_buffer[2] = ((time->hours   / 10) << 4) | ((time->hours   % 10) & 0x0F);
 
   if ((RtcI2cWriteBufferInterrupt(RTC_HW_ADDRESS, RTC_REG_SECONDS, write_buffer, 3)) != RTC_OK)
-    return RTC_TRANSMIT_ERROR;
+    return RTC_I2C_TRANSMIT_ERROR;
 
   osSemaphoreRelease(RtcI2cSemphoreHandle);
   return RTC_OK;
@@ -311,13 +329,20 @@ uint8_t RtcI2cSetTime(RTC_TIME_t *time)
 
 /**
  * @brief          RTC I2C read buffer with interrupt
+ * @param[in]      device: number of I2C device
+ * @param[in]      address: register of I2C device where we read info from
+ * @param[in]      buffer: pointer to @ref buffer to write from
+ * @param[in]      length: length of writing message in bytes
+ * @return         Current error instance
  */
 uint8_t RtcI2cReadBufferInterrupt(uint8_t device, uint8_t address, uint8_t *buffer, uint8_t length)
 {
   uint8_t res = RTC_OK;
 
-  if (RtcI2cSetMode(RTC_I2C_READ) != RTC_OK)
-    return RTC_I2C_INIT_ERROR;
+  res = RtcI2cSetMode(RTC_I2C_READ);
+
+  if (res != RTC_OK)
+    return res;
 
   osMutexAcquire(RtcI2cMutexHandle, osWaitForever);
 
@@ -327,7 +352,7 @@ uint8_t RtcI2cReadBufferInterrupt(uint8_t device, uint8_t address, uint8_t *buff
   res = prvStartTransaction(device, address);
 
   if (res != RTC_OK)
-    return RTC_RECEIVE_ERROR;
+    return RTC_I2C_RECEIVE_ERROR;
 
   osDelay(1);
 
@@ -347,13 +372,20 @@ uint8_t RtcI2cReadBufferInterrupt(uint8_t device, uint8_t address, uint8_t *buff
 
 /**
  * @brief          RTC I2C write byte with interrupt
+ * @param[in]      device: number of I2C device
+ * @param[in]      address: register of I2C device where we write info to
+ * @param[in]      buffer: pointer to @ref buffer to write from
+ * @param[in]      length: length of writing message in bytes
+ * @return         Current error instance
  */
 uint8_t RtcI2cWriteBufferInterrupt(uint8_t device, uint8_t address, uint8_t *buffer, uint8_t length)
 {
   uint8_t res = RTC_OK;
 
-  if (RtcI2cSetMode(RTC_I2C_WRITE) != RTC_OK)
-    return RTC_I2C_INIT_ERROR;
+  res = RtcI2cSetMode(RTC_I2C_WRITE);
+
+  if (res != RTC_OK)
+    return res;
 
   osMutexAcquire(RtcI2cMutexHandle, osWaitForever);
 
@@ -368,7 +400,7 @@ uint8_t RtcI2cWriteBufferInterrupt(uint8_t device, uint8_t address, uint8_t *buf
   res = prvStartTransaction(device, address);
 
   if (res != RTC_OK)
-    return RTC_RECEIVE_ERROR;
+    return RTC_I2C_TRANSMIT_ERROR;
 
   osMutexRelease(RtcI2cMutexHandle);
 
@@ -380,7 +412,12 @@ uint8_t RtcI2cWriteBufferInterrupt(uint8_t device, uint8_t address, uint8_t *buf
 
 
 /**
- * @brief          RTC I2C read byte blocking
+ * @brief          RTC I2C read byte
+ * @param[in]      device: number of I2C device
+ * @param[in]      address: register of I2C device where we read info
+ * @param[in]      buffer: pointer to @ref buffer to read from
+ * @param[in]      num_bytes: length of reading message in bytes
+ * @return         Current error instance
  */
 uint8_t RtcI2cReadByte(uint8_t device, uint8_t address, uint8_t *buffer, uint16_t num_bytes)
 {
@@ -390,10 +427,7 @@ uint8_t RtcI2cReadByte(uint8_t device, uint8_t address, uint8_t *buffer, uint16_
   LL_I2C_AcknowledgeNextData(I2C1, LL_I2C_ACK);
   LL_I2C_GenerateStartCondition(I2C1);
 
-  while(!LL_I2C_IsActiveFlag_SB(I2C1))
-  {
-    IndicationLedYellow();
-  }
+  while(!LL_I2C_IsActiveFlag_SB(I2C1));
 
   (void) I2C1->SR1;
 
@@ -406,10 +440,7 @@ uint8_t RtcI2cReadByte(uint8_t device, uint8_t address, uint8_t *buffer, uint16_
 
   LL_I2C_GenerateStartCondition(I2C1);
 
-  while(!LL_I2C_IsActiveFlag_SB(I2C1))
-  {
-    IndicationLedYellow();
-  }
+  while(!LL_I2C_IsActiveFlag_SB(I2C1));
 
   (void) I2C1->SR1;
 
@@ -446,7 +477,12 @@ uint8_t RtcI2cReadByte(uint8_t device, uint8_t address, uint8_t *buffer, uint16_
 
 
 /**
- * @brief          RTC I2C write byte blocking
+ * @brief          RTC I2C write byte
+ * @param[in]      device: number of I2C device
+ * @param[in]      address: register of I2C device where we read info
+ * @param[in]      buffer: pointer to @ref buffer to write to
+ * @param[in]      num_bytes: length of writing message in bytes
+ * @return         Current error instance
  */
 uint8_t RtcI2cWriteByte(uint8_t device, uint8_t address, uint8_t *buffer, uint16_t num_bytes)
 {
@@ -487,7 +523,7 @@ uint8_t RtcI2cWriteByte(uint8_t device, uint8_t address, uint8_t *buffer, uint16
 
 
 /**
- * @brief          RTC_I2C get current mode
+ * @brief          RTC I2C get current mode
  * @return         rtc_i2c.mode: mode status instance
  */
 uint8_t RtcI2cGetMode(void)
@@ -500,14 +536,14 @@ uint8_t RtcI2cGetMode(void)
 
 
 /**
- * @brief          RTC set current status
+ * @brief          RTC I2C set current status
  * @param[in]      status: status which need to be set
  * @return         Current error instance
  */
 uint8_t RtcI2cSetMode(RTC_I2C_MODE_t mode)
 {
   if (mode > RTC_I2C_NUM_OF_MODES)
-    return RTC_SET_MODE_ERROR;
+    return RTC_SET_LL_I2C_MODE_ERROR;
 
   rtc_i2c.mode = mode;
 
@@ -597,13 +633,13 @@ uint8_t prvRtcGPIOInit(void)
   GPIO_InitStruct.Mode = LL_GPIO_MODE_INPUT;
   GPIO_InitStruct.Pull = LL_GPIO_PULL_NO;
   if(LL_GPIO_Init(RTCRST_GPIO_Port, &GPIO_InitStruct) != SUCCESS)
-    return RTC_INIT_ERROR;
+    return RTC_I2C_INIT_ERROR;
 
   GPIO_InitStruct.Pin = RTCINT_Pin;
   GPIO_InitStruct.Mode = LL_GPIO_MODE_INPUT;
   GPIO_InitStruct.Pull = LL_GPIO_PULL_NO;
   if(LL_GPIO_Init(RTCINT_GPIO_Port, &GPIO_InitStruct) != SUCCESS)
-    return RTC_INIT_ERROR;
+    return RTC_I2C_INIT_ERROR;
 
   LL_APB2_GRP1_EnableClock(LL_APB2_GRP1_PERIPH_SYSCFG);
 
@@ -745,6 +781,9 @@ void I2C1_ER_IRQHandler(void)
 
 
 
+/**
+ * @brief          RTC I2C error IRQ
+ */
 void EXTI1_IRQHandler(void)
 {
   if (LL_EXTI_IsActiveFlag_0_31(LL_EXTI_LINE_1))
