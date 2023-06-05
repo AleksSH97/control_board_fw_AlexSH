@@ -50,7 +50,7 @@ const osMessageQueueAttr_t uartRxQueueAttributes = {
       .name = "uartRxQueue",
 };
 
-
+volatile uint8_t esp8266_logs;
 
 
 /******************************************************************************/

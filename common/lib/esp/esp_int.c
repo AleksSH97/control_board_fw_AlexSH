@@ -38,9 +38,8 @@
 #include "esp/esp_unicode.h"
 #include "system/esp_ll.h"
 
-#include "app/typedefs.h"
-#include "app/io/printf.h"
-#include "app/io/io_system.h"
+#include "log.h"
+#include "io_system.h"
 
 #if !__DOXYGEN__
 /**
@@ -556,7 +555,7 @@ espi_parse_received(esp_recv_t* rcv) {
     if (esp8266_logs)
     {
         Printf_LogCONT(CLR_PR"");
-        for (u8 i = 0; i < rcv->len; ++i)
+        for (uint8_t i = 0; i < rcv->len; ++i)
             if (!((rcv->data[i] == '\r') || (rcv->data[i] == '\n')))
               Printf_LogCONT("%c", rcv->data[i]);
         Printf_LogCRLF(""CLR_DEF);
