@@ -90,6 +90,7 @@ typedef struct
 console_error_t console_error;
 console_t console;
 
+bool esp8266_update;
 
 /******************************************************************************/
 /* Private function prototypes ---------------------------------------------- */

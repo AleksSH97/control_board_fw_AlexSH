@@ -29,27 +29,13 @@
  * This file is part of ESP-AT.
  *
  * Author:          Tilen MAJERLE <tilen@majerle.eu>
+ * Modified by:     Aleksandr Shabalin
  */
 
-/*
- * STM32L496G-Discovery comes with external STMOD+ board with CN4 ESP-01 connector
- *
- * UART configuration is:
- *
- * UART:                UART5
- * STM32 TX:            GPIOC, GPIO_PIN_12
- * STM32 RX:            GPIOD, GPIO_PIN_2
- * RESET:               GPIOA, GPIO_PIN_10
- * GPIO0:               GPIOA, GPIO_PIN_15
- *
- *
- * When LL init function is called for first time,
- * driver will create a new thread. Thread will periodically (together with DMA + USART interrupts)
- * check for new incoming data and in case we have something to process,
- * it will use direct processing method without copying data to ESP internal receive buffers.
- *
- * \ref ESP_CFG_INPUT_USE_PROCESS must be enabled in order to use this driver.
- */
+
+/******************************************************************************/
+/* Includes ----------------------------------------------------------------- */
+/******************************************************************************/
 #include "esp/esp.h"
 #include "esp/esp_mem.h"
 #include "esp/esp_input.h"
@@ -66,7 +52,12 @@
 
 #include "log.h"
 #include "console.h"
+#include "dma.h"
 
+
+/******************************************************************************/
+/* Private defines ---------------------------------------------------------- */
+/******************************************************************************/
 #define ESP_TX_Pin LL_GPIO_PIN_12
 #define ESP_TX_GPIO_Port GPIOC
 #define ESP_RX_Pin LL_GPIO_PIN_2
@@ -76,17 +67,43 @@
 #define ESP_CTRL_Pin LL_GPIO_PIN_15
 #define ESP_CTRL_GPIO_Port GPIOA
 
-static osSemaphoreId esptxSemaphoreHandle;
-static osMutexId esptxMutexHandle;
+
+/******************************************************************************/
+/* Private variables -------------------------------------------------------- */
+/******************************************************************************/
+static osSemaphoreId_t esptxSemaphoreHandle;
+static osMutexId_t esptxMutexHandle;
+
+const osSemaphoreAttr_t esptxSemaphore_attr =
+{
+    .name = "esptxSemaphore",
+    .attr_bits = 0U,
+    .cb_mem = NULL,
+    .cb_size = 0U
+};
+
+const osMutexAttr_t esptxMutex_attr =
+{
+  .name = "esptxMutex",
+  .attr_bits = osMutexRecursive,
+  .cb_mem = NULL,
+  .cb_size = 0U
+};
+
 
 static uint8_t initialized;
+
+
+/******************************************************************************/
+
 
 /**
  * \brief           Configure UART using DMA for receive in double buffer mode and IDLE line detection
  */
 void
 configure_uart(uint32_t baudrate) {
-    if (!initialized) {
+    if (!initialized)
+    {
       LL_USART_InitTypeDef USART_InitStruct;
 
       LL_GPIO_InitTypeDef GPIO_InitStruct;
@@ -149,11 +166,15 @@ configure_uart(uint32_t baudrate) {
 
       // Other stuff
 
-      osSemaphoreDef(esptxSemaphore);
-      esptxSemaphoreHandle = osSemaphoreCreate(osSemaphore(esptxSemaphore), 1);
-      osSemaphoreWait(esptxSemaphoreHandle, 0);
-      osMutexDef(esptxMutex);
-      esptxMutexHandle = osMutexCreate(osMutex(esptxMutex));
+      // OLD
+//      osSemaphoreDef(esptxSemaphore);
+//      esptxSemaphoreHandle = osSemaphoreCreate(osSemaphore(esptxSemaphore), 1);
+//      osSemaphoreWait(esptxSemaphoreHandle, 0);
+//      osMutexDef(esptxMutex);
+//      esptxMutexHandle = osMutexCreate(osMutex(esptxMutex));
+
+      esptxSemaphoreHandle = osSemaphoreNew(1, 1, &esptxSemaphore_attr);
+      esptxMutexHandle = osMutexNew(&esptxMutex_attr);
 
       LL_USART_Enable(UART5);
 
@@ -162,7 +183,9 @@ configure_uart(uint32_t baudrate) {
       vQueueAddToRegistry(esptxMutexHandle, "esptxMutex");
 #endif /* defined(OS_DEBUG) */
 
-    } else {
+    }
+    else
+    {
         osDelay(10);
         LL_RCC_ClocksTypeDef rcc_clocks;
         LL_RCC_GetSystemClocksFreq(&rcc_clocks);
@@ -301,10 +324,6 @@ void UART5_IRQHandler(void)
     else
     {
       uint8_t rx = LL_USART_ReceiveData8(UART5);
-//      if (esp8266_debug)
-//      {
-//        Printf_LogCONT(CLR_PR"%c"CLR_OFF, rx);
-//      }
       esp_input(&rx, 1);
     }
   }

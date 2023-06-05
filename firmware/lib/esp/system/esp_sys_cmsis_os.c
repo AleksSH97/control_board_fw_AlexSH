@@ -30,8 +30,9 @@
  *
  * Author:          Tilen MAJERLE <tilen@majerle.eu>
  */
-#include "system/esp_sys.h"
+#include "esp/system/esp_sys.h"
 #include "cmsis_os.h"
+#include "cmsis_os2.h"
 
 #if !__DOXYGEN__
 static osMutexId sys_mutex;
