@@ -1,10 +1,10 @@
 /**
- * \file            esp_config.h
- * \brief           User-defined configs file
+ * \file            esp_sys_cmsis_os2.h
+ * \brief           CMSIS-OS V2 based system file
  */
 
 /*
- * Copyright (c) 2018 Tilen Majerle
+ * Copyright (c) 2019 Tilen MAJERLE
  *
  * Permission is hereby granted, free of charge, to any person
  * obtaining a copy of this software and associated documentation
@@ -29,32 +29,40 @@
  * This file is part of ESP-AT library.
  *
  * Author:          Tilen MAJERLE <tilen@majerle.eu>
+ * Version:         $_version_$
  */
-#ifndef ESP_HDR_CONFIG_H
-#define ESP_HDR_CONFIG_H
+#ifndef ESP_HDR_SYSTEM_CMSIS_OS2_H
+#define ESP_HDR_SYSTEM_CMSIS_OS2_H
 
-/*
- * Open "include/esp/esp_config_default.h" and
- * copy & replace here settings you want to change values
- */
-#define ESP_CFG_OS                          1
-#define ESP_CFG_SYS_PORT                    ESP_SYS_PORT_CMSIS_OS2
+#ifdef __cplusplus
+extern "C" {
+#endif /* __cplusplus */
 
-#define ESP_CFG_CONN_MAX_DATA_LEN           2048
-#define ESP_CFG_CONN_MAX_RECV_BUFF_SIZE     1460
+#include <stdint.h>
+#include <stdlib.h>
 
-#define ESP_CFG_AT_PORT_BAUDRATE            115200
+#include "esp_config.h"
 
-#define ESP_CFG_MODE_STATION                1
-#define ESP_CFG_MODE_ACCESS_POINT           1
+#if ESP_CFG_OS && !__DOXYGEN__
 
-#define ESP_CFG_MAX_SSID_LENGTH             32
-#define ESP_CFG_MAX_PWD_LENGTH              32
+#include "cmsis_os2.h"
 
-#define ESP_CFG_NETCONN                     1
-#define ESP_CFG_PING                        1
+typedef osMutexId_t                 esp_sys_mutex_t;
+typedef osSemaphoreId_t             esp_sys_sem_t;
+typedef osMessageQueueId_t          esp_sys_mbox_t;
+typedef osThreadId_t                esp_sys_thread_t;
+typedef osPriority_t                esp_sys_thread_prio_t;
+#define ESP_SYS_MBOX_NULL           (esp_sys_mbox_t)0
+#define ESP_SYS_SEM_NULL            (esp_sys_sem_t)0
+#define ESP_SYS_MUTEX_NULL          (esp_sys_mutex_t)0
+#define ESP_SYS_TIMEOUT             ((uint32_t)osWaitForever)
+#define ESP_SYS_THREAD_PRIO         (osPriorityNormal)
+#define ESP_SYS_THREAD_SS           (256)
 
-/* After user configuration, call default config to merge config together */
-#include "esp/esp_config_default.h"
+#endif /* ESP_CFG_OS && !__DOXYGEN__ */
 
-#endif /* ESP_HDR_CONFIG_H */
+#ifdef __cplusplus
+};
+#endif /* __cplusplus */
+
+#endif /* ESP_HDR_SYSTEM_CMSIS_OS2_H */
