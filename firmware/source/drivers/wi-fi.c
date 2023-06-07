@@ -32,6 +32,21 @@
 /******************************************************************************/
 /* Private variables -------------------------------------------------------- */
 /******************************************************************************/
+osThreadId_t WifiApTaskHandle;
+osThreadId_t WifiStTaskHandle;
+
+const osThreadAttr_t wifiApTask_attributes = {
+      .name = "WifiApTask",
+      .stack_size = 128 * 4,
+      .priority = (osPriority_t) osPriorityNormal,
+};
+
+const osThreadAttr_t wifiStTask_attributes = {
+      .name = "WifiStTask",
+      .stack_size = 128 * 4,
+      .priority = (osPriority_t) osPriorityNormal,
+};
+
 typedef struct
 {
   esp_conn_p connection;
@@ -74,9 +89,33 @@ uint8_t WiFiInit(void)
 
   espr_t output = esp_init(esp_callback_function, 0);
   if (output != espOK)
-    Printf_LogsCRLF(CLR_RD"ESP init FAIL! (%s)"CLR_DEF, prvESPErrorHandler(output));
+  {
+    PrintfLogsCRLF(CLR_RD"ESP init FAIL! (%s)"CLR_DEF, prvESPErrorHandler(output));
+    return WIFI_INIT_ERROR;
+  }
+
+  WifiStTaskHandle = NULL;
+  WifiApTaskHandle = NULL;
 
   return res;
+}
+/******************************************************************************/
+
+
+
+
+/**
+ * @brief          Wi-Fi set current error
+ * @param[in]      error: error which need to be set
+ */
+uint8_t WiFiSetError(WIFI_ERROR_t error)
+{
+  if (error > WIFI_NUM_OF_ERRORS)
+    return WIFI_SET_ERROR;
+
+  wifi.error = error;
+
+  return WIFI_OK;
 }
 /******************************************************************************/
 
