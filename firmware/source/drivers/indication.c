@@ -149,10 +149,10 @@ void IndicationLedYellow(void)
  */
 void IndicationLedGreen(void)
 {
-    for (int led_index = 0; led_index < N_LED; led_index++) {
-      prvIndicationLedGreenSetup(&mculed[led_index], led_index);
-      LedFunction(&mculed[led_index]);
-    }
+  for (int led_index = 0; led_index < N_LED; led_index++) {
+    prvIndicationLedGreenSetup(&mculed[led_index], led_index);
+    LedFunction(&mculed[led_index]);
+  }
 }
 /******************************************************************************/
 
@@ -164,10 +164,10 @@ void IndicationLedGreen(void)
  */
 void IndicationLedLeft(void)
 {
-    for (int led_index = 0; led_index < N_LED; led_index++) {
-      prvIndicationLedLeftSetup(&mculed[led_index], led_index);
-      LedFunction(&mculed[led_index]);
-    }
+  for (int led_index = 0; led_index < N_LED; led_index++) {
+    prvIndicationLedLeftSetup(&mculed[led_index], led_index);
+    LedFunction(&mculed[led_index]);
+  }
 }
 /******************************************************************************/
 
@@ -179,10 +179,10 @@ void IndicationLedLeft(void)
  */
 void IndicationLedRight(void)
 {
-    for (int led_index = 0; led_index < N_LED; led_index++) {
-      prvIndicationLedRightSetup(&mculed[led_index], led_index);
-      LedFunction(&mculed[led_index]);
-    }
+  for (int led_index = 0; led_index < N_LED; led_index++) {
+    prvIndicationLedRightSetup(&mculed[led_index], led_index);
+    LedFunction(&mculed[led_index]);
+  }
 }
 /******************************************************************************/
 
@@ -194,10 +194,10 @@ void IndicationLedRight(void)
  */
 void IndicationLedButton(void)
 {
-    for (int led_index = 0; led_index < N_LED; led_index++) {
-      prvIndicationLedButtonSetup(&mculed[led_index], led_index);
-      LedFunction(&mculed[led_index]);
-    }
+  for (int led_index = 0; led_index < N_LED; led_index++) {
+    prvIndicationLedButtonSetup(&mculed[led_index], led_index);
+    LedFunction(&mculed[led_index]);
+  }
 }
 /******************************************************************************/
 

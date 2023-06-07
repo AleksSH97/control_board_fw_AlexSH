@@ -32,16 +32,16 @@
 /******************************************************************************/
 /* Private variables -------------------------------------------------------- */
 /******************************************************************************/
-osThreadId_t WifiApTaskHandle;
-osThreadId_t WifiStTaskHandle;
+osThreadId_t WiFiApTaskHandle;
+osThreadId_t WiFiStTaskHandle;
 
-const osThreadAttr_t wifiApTask_attributes = {
+const osThreadAttr_t WifiApTask_attributes = {
       .name = "WifiApTask",
       .stack_size = 128 * 4,
       .priority = (osPriority_t) osPriorityNormal,
 };
 
-const osThreadAttr_t wifiStTask_attributes = {
+const osThreadAttr_t WifiStTask_attributes = {
       .name = "WifiStTask",
       .stack_size = 128 * 4,
       .priority = (osPriority_t) osPriorityNormal,
@@ -94,14 +94,67 @@ uint8_t WiFiInit(void)
     return WIFI_INIT_ERROR;
   }
 
-  WifiStTaskHandle = NULL;
-  WifiApTaskHandle = NULL;
+  WiFiStTaskHandle = NULL;
+  WiFiApTaskHandle = NULL;
+
+  res = WiFiStart(WIFI_MODE_ST);
 
   return res;
 }
 /******************************************************************************/
 
 
+
+
+/**
+ * @brief  This function starts ESP8266 wifi module in the specified mode.
+ * @param  mode_ap: 'true' value starts wifi module in AP mode
+ * @retval uint8_t: Current error instance
+ */
+uint8_t WiFiStart(bool mode_ap)
+{
+  wifi.ap_mode = mode_ap;
+
+  if (mode_ap == WIFI_MODE_AP)
+  {
+    WiFiApTaskHandle = osThreadNew(WiFiApTask, NULL, &WifiApTask_attributes);
+    if (WiFiApTaskHandle == NULL)
+      return WIFI_START_ERROR;
+  }
+  else if (mode_ap == WIFI_MODE_ST)
+  {
+    WiFiStTaskHandle = osThreadNew(WiFiStTask, NULL, &WifiStTask_attributes);
+    if (WiFiStTaskHandle == NULL)
+      return WIFI_START_ERROR;
+  }
+
+  PrintfLogsCRLF("Switch WiFi to %s mode ..."CLR_DEF,
+      wifi.ap_mode ? CLR_YL"AP"CLR_GR : CLR_YL"ST"CLR_GR);
+
+  if (wifi.ap_mode)
+    IndicationLedError();
+  else
+    IndicationLedYellow();
+
+  return WIFI_OK;
+}
+/******************************************************************************/
+
+
+
+
+void WiFiApTask(void *argument)
+{
+  for (;;);
+}
+
+
+
+
+void WiFiStTask(void *argument)
+{
+  for (;;);
+}
 
 
 /**
