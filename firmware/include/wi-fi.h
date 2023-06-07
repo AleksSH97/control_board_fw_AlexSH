@@ -26,6 +26,13 @@
 #include "cmsis_os.h"
 #include "cmsis_os2.h"
 
+#include "esp/esp.h"
+#include "esp/esp_private.h"
+#include "esp/esp_parser.h"
+
+#include "log.h"
+#include "io_system.h"
+
 #ifdef __cplusplus
 extern "C" {
 #endif /* __cplusplus */
@@ -39,6 +46,14 @@ extern "C" {
 /******************************************************************************/
 /* Public variables --------------------------------------------------------- */
 /******************************************************************************/
+typedef enum
+{
+  WIFI_OK = 0x00,
+  WIFI_INIT_ERROR,
+
+
+  WIFI_UNKNOWN = 0xFF,
+} WIFI_ERROR_t;
 
 
 /******************************************************************************/
