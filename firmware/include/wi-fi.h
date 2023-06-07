@@ -43,6 +43,9 @@ extern "C" {
 /******************************************************************************/
 #define WIFI_NUM_OF_ERRORS    (255u)
 
+#define WIFI_MODE_AP          (true)
+#define WIFI_MODE_ST          (false)
+
 /******************************************************************************/
 /* Public variables --------------------------------------------------------- */
 /******************************************************************************/
@@ -50,6 +53,7 @@ typedef enum
 {
   WIFI_OK = 0x00,
   WIFI_INIT_ERROR,
+  WIFI_START_ERROR,
 
   WIFI_SET_ERROR,
 
@@ -61,6 +65,10 @@ typedef enum
 /* Public functions --------------------------------------------------------- */
 /******************************************************************************/
 uint8_t WiFiSetError(WIFI_ERROR_t error);
+uint8_t WiFiStart(bool mode_ap);
+void WiFiApTask(void *argument);
+void WiFiStTask(void *argument);
+
 
 /******************************************************************************/
 
