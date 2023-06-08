@@ -269,6 +269,7 @@ void prvIoLogsRxHandler(char rx)
   {
     IoSystemSetMode(IO_CONSOLE);
     ConsoleStart();
+    IndicationLedGreen();
     return;
   }
 
