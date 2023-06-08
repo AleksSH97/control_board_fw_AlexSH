@@ -22,16 +22,21 @@ mculed_t mculed[N_LED];
 /******************************************************************************/
 /* Private function prototypes ---------------------------------------------- */
 /******************************************************************************/
-static void prvIndicationLedLoadingSetup(mculed_t *led_ptr, int led_index);
-static void prvIndicationLedButtonSetup(mculed_t *led_ptr, int led_index);
-static void prvIndicationLedButtonHoldSetup(mculed_t *led_ptr, int led_index);
-void prvIndicationLedErrorSetup(mculed_t *led_ptr, int led_index);
-static void prvIndicationLedButtonDoubleClickSetup(mculed_t *led_ptr, int led_index);
-static void prvIndicationLedYellowSetup(mculed_t *led_ptr, int led_index);
-static void prvIndicationLedGreenSetup(mculed_t *led_ptr, int led_index);
-void prvIndicationLedLeftSetup(mculed_t *led_ptr, int led_index);
-void prvIndicationLedRightSetup(mculed_t *led_ptr, int led_index);
-static void prvIndicationLedReadySetup(mculed_t *led_ptr);
+void prvIndicationLedLoadingSetup(mculed_t *led_ptr, uint8_t led_index);
+void prvIndicationLedButtonSetup(mculed_t *led_ptr, uint8_t led_index);
+void prvIndicationLedButtonHoldSetup(mculed_t *led_ptr, uint8_t led_index);
+void prvIndicationLedErrorSetup(mculed_t *led_ptr, uint8_t led_index);
+void prvIndicationLedButtonDoubleClickSetup(mculed_t *led_ptr, uint8_t led_index);
+
+void prvIndicationLedYellowSetup(mculed_t *led_ptr, uint8_t led_index);
+void prvIndicationLedYellowBlinkSetup(mculed_t *led_ptr, uint8_t led_index, uint8_t blinks);
+
+void prvIndicationLedGreenSetup(mculed_t *led_ptr, uint8_t led_index);
+
+
+void prvIndicationLedLeftSetup(mculed_t *led_ptr, uint8_t led_index);
+void prvIndicationLedRightSetup(mculed_t *led_ptr, uint8_t led_index);
+void prvIndicationLedReadySetup(mculed_t *led_ptr);
 
 /******************************************************************************/
 
@@ -119,7 +124,8 @@ void IndicationLedToggle(mculed_t *self)
  */
 void IndicationLedLoading(void)
 {
-	for (int led_index = 0; led_index < N_LED; led_index++) {
+	for (uint8_t led_index = 0; led_index < N_LED; led_index++)
+	{
     prvIndicationLedLoadingSetup(&mculed[led_index], led_index);
     LedFunction(&mculed[led_index]);
 	}
@@ -134,10 +140,28 @@ void IndicationLedLoading(void)
  */
 void IndicationLedYellow(void)
 {
-	for (int led_index = 0; led_index < N_LED; led_index++) {
+	for (uint8_t led_index = 0; led_index < N_LED; led_index++)
+	{
     prvIndicationLedYellowSetup(&mculed[led_index], led_index);
     LedFunction(&mculed[led_index]);
 	}
+}
+/******************************************************************************/
+
+
+
+
+
+/**
+ * @brief          LED YL blink n times
+ */
+void IndicationLedYellowBlink(uint8_t blinks)
+{
+  for (uint8_t led_index = 0; led_index < N_LED; led_index++)
+  {
+    prvIndicationLedYellowBlinkSetup(&mculed[led_index], led_index, blinks);
+    LedFunction(&mculed[led_index]);
+  }
 }
 /******************************************************************************/
 
@@ -149,38 +173,9 @@ void IndicationLedYellow(void)
  */
 void IndicationLedGreen(void)
 {
-  for (int led_index = 0; led_index < N_LED; led_index++) {
+  for (uint8_t led_index = 0; led_index < N_LED; led_index++)
+  {
     prvIndicationLedGreenSetup(&mculed[led_index], led_index);
-    LedFunction(&mculed[led_index]);
-  }
-}
-/******************************************************************************/
-
-
-
-
-/**
- * @brief          LED left on
- */
-void IndicationLedLeft(void)
-{
-  for (int led_index = 0; led_index < N_LED; led_index++) {
-    prvIndicationLedLeftSetup(&mculed[led_index], led_index);
-    LedFunction(&mculed[led_index]);
-  }
-}
-/******************************************************************************/
-
-
-
-
-/**
- * @brief          LED right on
- */
-void IndicationLedRight(void)
-{
-  for (int led_index = 0; led_index < N_LED; led_index++) {
-    prvIndicationLedRightSetup(&mculed[led_index], led_index);
     LedFunction(&mculed[led_index]);
   }
 }
@@ -194,7 +189,8 @@ void IndicationLedRight(void)
  */
 void IndicationLedButton(void)
 {
-  for (int led_index = 0; led_index < N_LED; led_index++) {
+  for (uint8_t led_index = 0; led_index < N_LED; led_index++)
+  {
     prvIndicationLedButtonSetup(&mculed[led_index], led_index);
     LedFunction(&mculed[led_index]);
   }
@@ -209,7 +205,8 @@ void IndicationLedButton(void)
  */
 void IndicationLedButtonHold(void)
 {
-	for (int led_index = 0; led_index < N_LED; led_index++) {
+	for (uint8_t led_index = 0; led_index < N_LED; led_index++)
+	{
     prvIndicationLedButtonHoldSetup(&mculed[led_index], led_index);
     LedFunction(&mculed[led_index]);
 	}
@@ -224,7 +221,8 @@ void IndicationLedButtonHold(void)
  */
 void IndicationLedButtonDoubleClick(void)
 {
-	for (int led_index = 0; led_index < N_LED; led_index++) {
+	for (uint8_t led_index = 0; led_index < N_LED; led_index++)
+	{
     prvIndicationLedButtonDoubleClickSetup(&mculed[led_index], led_index);
     LedFunction(&mculed[led_index]);
 	}
@@ -239,7 +237,8 @@ void IndicationLedButtonDoubleClick(void)
  */
 void IndicationLedError(void)
 {
-	for (int led_index = 0; led_index < N_LED; led_index++) {
+	for (uint8_t led_index = 0; led_index < N_LED; led_index++)
+	{
     prvIndicationLedErrorSetup(&mculed[led_index], led_index);
     LedFunction(&mculed[led_index]);
 	}
@@ -254,7 +253,8 @@ void IndicationLedError(void)
  */
 void IndicationLedReady(void)
 {
-  for (int led_index = 0; led_index < N_LED; led_index++) {
+  for (uint8_t led_index = 0; led_index < N_LED; led_index++)
+  {
     prvIndicationLedReadySetup(&mculed[led_index]);
     LedFunction(&mculed[led_index]);
   }
@@ -267,11 +267,12 @@ void IndicationLedReady(void)
 /**
  * @brief          YL led blink 1 time setup
  */
-void prvIndicationLedYellowSetup(mculed_t *led_ptr, int led_index)
+void prvIndicationLedYellowSetup(mculed_t *led_ptr, uint8_t led_index)
 {
   led_ptr->setup.iterations_num = INDICATION_LED_BUTTON_NUM;
 
-  switch (led_index) {
+  switch (led_index)
+  {
     case LED_RD:
       led_ptr->hardware.mode = MCULED_OFF_STATE;
       led_ptr->setup.on_ms = ZERO_MS;
@@ -302,10 +303,50 @@ void prvIndicationLedYellowSetup(mculed_t *led_ptr, int led_index)
 
 
 
+
+/**
+ * @brief          YL led blink "blinks" times setup
+ */
+void prvIndicationLedYellowBlinkSetup(mculed_t *led_ptr, uint8_t led_index, uint8_t blinks)
+{
+  switch (led_index)
+  {
+    case LED_RD:
+      led_ptr->hardware.mode = MCULED_OFF_STATE;
+      led_ptr->setup.on_ms = ZERO_MS;
+      led_ptr->setup.delay_ms = ZERO_MS;
+      led_ptr->setup.off_ms = ZERO_MS;
+      break;
+    case LED_YL:
+      led_ptr->hardware.mode = MCULED_ON_STATE;
+      led_ptr->setup.on_ms = (INDICATION_LED_SPEED_VERY_FAST * LED_TIME_ON);
+      led_ptr->setup.off_ms = (INDICATION_LED_SPEED_VERY_FAST * LED_TIME_OFF);
+      led_ptr->setup.iterations_num = blinks;
+      led_ptr->setup.delay_ms = ZERO_MS;
+      break;
+    case LED_GR:
+      led_ptr->hardware.mode = MCULED_OFF_STATE;
+      led_ptr->setup.on_ms = ZERO_MS;
+      led_ptr->setup.delay_ms = ZERO_MS;
+      led_ptr->setup.off_ms = ZERO_MS;
+      break;
+    default:
+      break;
+  }
+
+  led_ptr->status.iterations_counter = 0;
+  led_ptr->status.on_timeout = led_ptr->setup.on_ms;
+  led_ptr->status.off_timeout = led_ptr->setup.off_ms;
+}
+/******************************************************************************/
+
+
+
+
 /**
  * @brief          GR led blink 1 time setup
  */
-void prvIndicationLedGreenSetup(mculed_t *led_ptr, int led_index)
+void prvIndicationLedGreenSetup(mculed_t *led_ptr, uint8_t led_index)
 {
   led_ptr->setup.iterations_num = INDICATION_LED_BUTTON_NUM;
 
@@ -344,7 +385,7 @@ void prvIndicationLedGreenSetup(mculed_t *led_ptr, int led_index)
 /**
  * @brief          Loading led left animation setup
  */
-void prvIndicationLedLeftSetup(mculed_t *led_ptr, int led_index)
+void prvIndicationLedLeftSetup(mculed_t *led_ptr, uint8_t led_index)
 {
   led_ptr->setup.iterations_num = INDICATION_LED_BUTTON_NUM;
 
@@ -371,7 +412,7 @@ void prvIndicationLedLeftSetup(mculed_t *led_ptr, int led_index)
 /**
  * @brief          Loading led right animation setup
  */
-void prvIndicationLedRightSetup(mculed_t *led_ptr, int led_index)
+void prvIndicationLedRightSetup(mculed_t *led_ptr, uint8_t led_index)
 {
   led_ptr->setup.iterations_num = INDICATION_LED_LOADING_NUM;
 
@@ -398,7 +439,7 @@ void prvIndicationLedRightSetup(mculed_t *led_ptr, int led_index)
 /**
  * @brief          Loading led animation setup
  */
-void prvIndicationLedLoadingSetup(mculed_t *led_ptr, int led_index)
+void prvIndicationLedLoadingSetup(mculed_t *led_ptr, uint8_t led_index)
 {
 	led_ptr->hardware.mode = MCULED_LED_LOADING;
 	led_ptr->setup.iterations_num = INDICATION_LED_LOADING_NUM;
@@ -435,7 +476,7 @@ void prvIndicationLedLoadingSetup(mculed_t *led_ptr, int led_index)
 /**
  * @brief          Button led setup
  */
-void prvIndicationLedButtonSetup(mculed_t *led_ptr, int led_index)
+void prvIndicationLedButtonSetup(mculed_t *led_ptr, uint8_t led_index)
 {
 	switch (led_index) {
 		case LED_RD:
@@ -471,7 +512,7 @@ void prvIndicationLedButtonSetup(mculed_t *led_ptr, int led_index)
 /**
  * @brief          Button hold led setup
  */
-void prvIndicationLedButtonHoldSetup(mculed_t *led_ptr, int led_index)
+void prvIndicationLedButtonHoldSetup(mculed_t *led_ptr, uint8_t led_index)
 {
 	switch (led_index) {
 		case LED_RD:
@@ -510,7 +551,7 @@ void prvIndicationLedButtonHoldSetup(mculed_t *led_ptr, int led_index)
 /**
  * @brief         Double click button led setup
  */
-void prvIndicationLedButtonDoubleClickSetup(mculed_t *led_ptr, int led_index)
+void prvIndicationLedButtonDoubleClickSetup(mculed_t *led_ptr, uint8_t led_index)
 {
 	switch (led_index) {
 		case LED_RD:
@@ -548,7 +589,7 @@ void prvIndicationLedButtonDoubleClickSetup(mculed_t *led_ptr, int led_index)
 /**
  * @brief          Error led setup
  */
-void prvIndicationLedErrorSetup(mculed_t *led_ptr, int led_index)
+void prvIndicationLedErrorSetup(mculed_t *led_ptr, uint8_t led_index)
 {
 	led_ptr->setup.iterations_num = 1u;
 
