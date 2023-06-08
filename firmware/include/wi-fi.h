@@ -57,6 +57,10 @@ typedef enum
 
   WIFI_SET_ERROR,
 
+  WIFI_SCAN_AP_ERROR,
+  WIFI_JOIN_ST_ERROR,
+  WIFI_NET_CHECK_ERROR,
+
   WIFI_UNKNOWN = 0xFF,
 } WIFI_ERROR_t;
 
@@ -65,6 +69,10 @@ typedef enum
 /* Public functions --------------------------------------------------------- */
 /******************************************************************************/
 uint8_t WiFiSetError(WIFI_ERROR_t error);
+uint8_t WiFiGetError(void);
+
+void WiFiErrorHandler(WIFI_ERROR_t error);
+
 uint8_t WiFiStart(bool mode_ap);
 void WiFiApTask(void *argument);
 void WiFiStTask(void *argument);

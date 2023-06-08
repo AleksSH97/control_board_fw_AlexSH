@@ -107,11 +107,11 @@ uint8_t WiFiInit(void)
 
 
 /**
- * @brief  This function starts ESP8266 wifi module in the specified mode.
+ * @brief  Start WiFi module in the specified mode.
  * @param  mode_ap: 'true' value starts wifi module in AP mode
  * @retval uint8_t: Current error instance
  */
-uint8_t WiFiStart(bool mode_ap)
+WIFI_ERROR_t WiFiStart(bool mode_ap)
 {
   wifi.ap_mode = mode_ap;
 
@@ -145,6 +145,8 @@ uint8_t WiFiStart(bool mode_ap)
 
 void WiFiApTask(void *argument)
 {
+
+
   for (;;);
 }
 
@@ -153,7 +155,41 @@ void WiFiApTask(void *argument)
 
 void WiFiStTask(void *argument)
 {
-  for (;;);
+  while (!wifi.esp_ready)
+    osDelay(100);
+
+  for (;;)
+  {
+    if (WiFiGetError() != WIFI_OK)
+    {
+      WiFiErrorHandler(WiFiGetError());
+      continue;
+    }
+
+    wifi.connection = NULL;
+
+    esp_reset_with_delay(ESP_CFG_RESET_DELAY_DEFAULT, NULL, NULL, 1);
+
+    esp_ap_t access_points[10];
+    size_t access_point_find;
+
+    espr_t res = esp_set_wifi_mode(ESP_MODE_STA, 0, NULL, NULL, 1);
+
+    if (res != espOK)
+    {
+      PrintfLogsCRLF(CLR_RD"ERROR: WiFi Access point scan failed (%s)"CLR_DEF, prvESPErrorHandler(res));
+      continue;
+    }
+
+    PrintfLogsCRLF(CLR_GR"WiFi mode is now "CLR_YL"ST"CLR_DEF);
+    bool config_ap_found = false;
+
+    while (!config_ap_found)
+    {
+      PrintfLogsCRLF(CLR_GR"WiFi Access points scanning ..."CLR_DEF);
+      IndicationLedYellowBlink(5);
+    }
+  }
 }
 
 
@@ -169,6 +205,40 @@ uint8_t WiFiSetError(WIFI_ERROR_t error)
   wifi.error = error;
 
   return WIFI_OK;
+}
+/******************************************************************************/
+
+
+
+
+/**
+ * @brief          Wi-Fi get current error
+ * @param[in]      error: error which need to be set
+ */
+uint8_t WiFiGetError(void)
+{
+  return wifi.error;
+}
+/******************************************************************************/
+
+
+
+
+/**
+ * @brief          Wi-Fi get current error
+ * @param[in]      error: error which need to be set
+ */
+void WiFiErrorHandler(WIFI_ERROR_t error)
+{
+  switch (error)
+  {
+    case WIFI_OK:
+      break;
+    case WIFI_INIT_ERROR:
+      PrintfLogsCRLF("\t"CLR_DEF"ERROR WIFI: "CLR_RD"INIT"CLR_DEF);
+    default:
+      PrintfLogsCRLF("\t"CLR_DEF"ERROR RTC: "CLR_RD"UNDEFINED"CLR_DEF);
+  }
 }
 /******************************************************************************/
 
