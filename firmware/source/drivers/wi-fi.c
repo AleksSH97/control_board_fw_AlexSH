@@ -2,7 +2,7 @@
  ******************************************************************************
  * @file           : wi-fi.c
  * @author         : Aleksandr Shabalin       <alexnv97@gmail.com>
- * @brief          : WI-FI driver
+ * @brief          : Wi-Fi driver
  ******************************************************************************
  * ----------------- Copyright (c) 2023 Aleksandr Shabalin------------------- *
  ******************************************************************************
@@ -75,6 +75,14 @@ espr_t esp_callback_function(esp_evt_t* event);
 char *prvESPErrorHandler(espr_t error);
 
 uint8_t prvWiFiStResetWithDelay(void);
+uint8_t prvWiFiStSetMode(void);
+uint8_t prvWiFiStListAp(esp_ap_t *access_point, size_t *access_point_find);
+uint8_t prvWiFiAccessPointsFound(size_t access_point_find, esp_ap_t *access_point, bool *config_ap_found);
+uint8_t prvWiFiStaJoin(void);
+uint8_t prvWiFiCopyIp(esp_ip_t *ip);
+uint8_t prvWiFiStaIsJoined(void);
+uint8_t prvWiFiPing(void);
+
 
 /******************************************************************************/
 
@@ -147,8 +155,6 @@ WIFI_ERROR_t WiFiStart(bool mode_ap)
 
 void WiFiApTask(void *argument)
 {
-
-
   for (;;);
 }
 
@@ -175,50 +181,51 @@ void WiFiStTask(void *argument)
 
     wifi.connection = NULL;
 
+    //WiFi reset with delay
     res = prvWiFiStResetWithDelay();
 
     if (res != espOK)
     {
-      PrintfLogsCRLF(CLR_RD"ERROR: Wifi Reset! (%s)"CLR_DEF, prvESPErrorHandler(res));
+      PrintfLogsCRLF(CLR_RD"ERROR: WiFi Reset! (%s)"CLR_DEF, prvESPErrorHandler(res));
       continue;
     }
+    else
+      PrintfLogsCRLF(CLR_GR"WiFi reset OK"CLR_DEF);
 
     esp_ap_t access_point[10];
     size_t access_point_find;
-    espr_t res = esp_set_wifi_mode(ESP_MODE_STA, 0, NULL, NULL, 1);
+
+    //WiFi set mode ST
+    res = prvWiFiStSetMode();
 
     if (res != espOK)
     {
       PrintfLogsCRLF(CLR_RD"ERROR: WiFi set mode ST failed (%s)"CLR_DEF, prvESPErrorHandler(res));
       continue;
     }
+    else
+      PrintfLogsCRLF(CLR_GR"WiFi mode is now "CLR_YL"ST"CLR_DEF);
 
-    PrintfLogsCRLF(CLR_GR"WiFi mode is now "CLR_YL"ST"CLR_DEF);
+    //WiFi start searching for access point
     bool config_ap_found = false;
 
     while (!config_ap_found)
     {
-      PrintfLogsCRLF(CLR_GR"WiFi Access points scanning ..."CLR_DEF);
+      PrintfLogsCRLF("WiFi Access points scanning ...");
       IndicationLedYellowBlink(5);
 
-      res = esp_sta_list_ap(NULL, access_point, ESP_ARRAYSIZE(access_point),
-          &access_point_find, NULL, NULL, 1);
+      res = prvWiFiStListAp(access_point, &access_point_find);
 
       if (res != espOK)
       {
         PrintfLogsCRLF(CLR_RD"ERROR: WiFi Access point scan failed (%s)"CLR_DEF, prvESPErrorHandler(res));
         continue;
       }
+      else
+        PrintfLogsCRLF(CLR_GR"WiFi Access point scan OK"CLR_DEF);
 
-      PrintfLogsCRLF(CLR_GR"WiFi Access point scan OK"CLR_DEF);
-
-      for (uint8_t i = 0; i < access_point_find; i++)
-      {
-        Printf_LogCRLF(CLR_GR"Wifi AP found: \"%s\", RSSI: %i dBm"CLR_DEF, access_point[i].ssid, access_point[i].rssi);
-
-        if (strcmp(config.wifi.ssid, access_point[i].ssid) == 0)
-          config_ap_found = true;
-      }
+      //WiFi check founded access points
+      res = prvWiFiAccessPointsFound(access_point_find, access_point, &config_ap_found);
 
       if (!config_ap_found)
       {
@@ -236,15 +243,15 @@ void WiFiStTask(void *argument)
       IndicationLedYellowBlink(5);
       PrintfLogsCRLF("WiFi connecting to \"%s\" network ...", config.wifi.ssid);
 
-      res = esp_sta_join(config.wifi.ssid, config.wifi.passw, NULL, 0, NULL, NULL, 1);
+      //WiFi join as station to access point
+      res = prvWiFiStaJoin();
 
       if (res != espOK)
       {
         config_ap_found = false;
         PrintfLogsCRLF(CLR_RD"ERROR: WiFi connection to \"%s\" network fault! (%s)"CLR_DEF, config.wifi.ssid, prvESPErrorHandler(res));
         osDelay(1000);
-
-        if (++errors_join_st >WIFI_MAX_JOIN_ERRORS)
+        if (++errors_join_st > WIFI_MAX_JOIN_ERRORS)
         {
           osDelay(30000);
           errors_join_st = 0;
@@ -254,17 +261,74 @@ void WiFiStTask(void *argument)
           continue;
       }
 
+      //WiFi copy IP
       esp_ip_t ip;
-      esp_sta_copy_ip(&ip, NULL, NULL);
+
+      res = prvWiFiCopyIp(&ip);
+
       PrintfLogsCRLF(CLR_GR"WiFi connected to \"%s\" access point OK"CLR_DEF, config.wifi.ssid);
       PrintfLogsCRLF(CLR_GR"WiFi station IP address: %u.%u.%u.%u"CLR_DEF, (int) ip.ip[0],
-                                                                              (int) ip.ip[1],
-                                                                              (int) ip.ip[2],
-                                                                              (int) ip.ip[3]);
-
+      (int) ip.ip[1], (int) ip.ip[2], (int) ip.ip[3]);
       errors_join_st = 0;
+
+      if (res != espOK)
+      {
+        PrintfLogsCRLF(CLR_RD"ERROR: Copy IP fault! (%s)"CLR_DEF, prvESPErrorHandler(res));
+        continue;
+      }
+    }
+
+    PrintfLogsCRLF("Checking \"%s\" for internet connection ...", config.wifi.ssid);
+
+    for (;;)
+    {
+      if (!prvWiFiStaIsJoined())
+        break;
+
+      if (wifi.restart)
+      {
+        wifi.restart = false;
+        break;
+      }
+
+      if (!wifi.sta_ready)
+      {
+        res = prvWiFiPing();
+
+        if (res != espOK)
+        {
+          if (++errors_net_check > WIFI_MAX_NET_CHECK_ERRORS)
+          {
+            errors_net_check = 0;
+            PrintfLogsCRLF(CLR_RD"ERROR: \"%s\" access point doesn't have internet connection!"CLR_DEF, config.wifi.ssid);
+            PrintfLogsCRLF("Checking \"%s\" for internet connection ...", config.wifi.ssid);
+            continue;
+          }
+          else
+          {
+            osDelay(1000);
+            continue;
+          }
+        }
+
+        errors_net_check = 0;
+        IndicationLedYellowBlink(3);
+        wifi.sta_ready = true;
+
+        PrintfLogsCRLF(CLR_GR"Internet connection \"%s\" OK"CLR_DEF, config.wifi.ssid);
+
+//        if (!mqtt_wifi_transport && !esp8266_onair)
+//        {
+//          PrintfLogsCRLF(CLR_GR"Switching MQTT transport to WiFi"CLR_DEF);
+//          MQTTClient_Stop();
+//        }
+      }
+
+      osDelay(100);
     }
   }
+
+  osThreadTerminate(NULL);
 }
 /******************************************************************************/
 
@@ -331,6 +395,130 @@ uint8_t prvWiFiStResetWithDelay(void)
 {
   uint8_t res = espOK;
   res = esp_reset_with_delay(ESP_CFG_RESET_DELAY_DEFAULT, NULL, NULL, 1);
+
+  return res;
+}
+/******************************************************************************/
+
+
+
+
+/**
+ * @brief          Wi-Fi ST_mode set
+ * @return         Current espr_t struct state
+ */
+uint8_t prvWiFiStSetMode(void)
+{
+  uint8_t res = espOK;
+  res = esp_set_wifi_mode(ESP_MODE_STA, 0, NULL, NULL, 1);
+
+  return res;
+}
+/******************************************************************************/
+
+
+
+
+/**
+ * @brief          Wi-Fi ST_mode list of access points
+ * @return         Current espr_t struct state
+ */
+uint8_t prvWiFiStListAp(esp_ap_t *access_point, size_t *access_point_find)
+{
+  uint8_t res = espOK;
+  res = esp_sta_list_ap(NULL, access_point, ESP_ARRAYSIZE(access_point),
+      access_point_find, NULL, NULL, 1);
+
+  return res;
+}
+/******************************************************************************/
+
+
+
+
+/**
+ * @brief          Wi-Fi ST_mode access poits check
+ * @return         Current espr_t struct state
+ */
+uint8_t prvWiFiAccessPointsFound(size_t access_point_find, esp_ap_t *access_point, bool *config_ap_found)
+{
+  uint8_t res = espOK;
+
+  for (uint8_t i = 0; i < access_point_find; i++)
+  {
+    PrintfLogsCRLF(CLR_GR"Wifi AP found: \"%s\", RSSI: %i dBm"CLR_DEF, access_point[i].ssid, access_point[i].rssi);
+
+    if (strcmp(config.wifi.ssid, access_point[i].ssid) == 0)
+      *config_ap_found = true;
+  }
+
+  return res;
+}
+/******************************************************************************/
+
+
+
+
+/**
+ * @brief          Wi-Fi join as station to access point
+ * @return         Current espr_t struct state
+ */
+uint8_t prvWiFiStaJoin(void)
+{
+  uint8_t res = espOK;
+  res = esp_sta_join(config.wifi.ssid, config.wifi.passw, NULL, 0, NULL, NULL, 1);
+  osDelay(1000);
+
+  return res;
+}
+/******************************************************************************/
+
+
+
+
+/**
+ * @brief          Wi-Fi have joined sta
+ * @return         Current espr_t struct state
+ */
+uint8_t prvWiFiStaIsJoined(void)
+{
+  uint8_t res = espOK;
+  res = esp_sta_is_joined();
+
+  if (!res)
+    osDelay(1000);
+
+  return res;
+}
+/******************************************************************************/
+
+
+
+
+/**
+ * @brief          Wi-Fi copy IP
+ * @return         Current espr_t struct state
+ */
+uint8_t prvWiFiCopyIp(esp_ip_t *ip)
+{
+  uint8_t res = espOK;
+  res = esp_sta_copy_ip(ip, NULL, NULL);
+
+  return res;
+}
+/******************************************************************************/
+
+
+
+
+/**
+ * @brief          Wi-Fi ping
+ * @return         Current espr_t struct state
+ */
+uint8_t prvWiFiPing(void)
+{
+  uint8_t res = espOK;
+  res = esp_ping("8.8.8.8", NULL, NULL, NULL, 1);
 
   return res;
 }
