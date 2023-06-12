@@ -74,6 +74,8 @@ static WIFI_DATA_t wifi;
 espr_t esp_callback_function(esp_evt_t* event);
 char *prvESPErrorHandler(espr_t error);
 
+uint8_t prvWiFiStResetWithDelay(void);
+
 /******************************************************************************/
 
 
@@ -161,6 +163,7 @@ void WiFiStTask(void *argument)
   uint8_t errors_scan_ap   = 0;
   uint8_t errors_join_st   = 0;
   uint8_t errors_net_check = 0;
+  uint8_t res = espOK;
 
   for (;;)
   {
@@ -172,11 +175,16 @@ void WiFiStTask(void *argument)
 
     wifi.connection = NULL;
 
-    esp_reset_with_delay(ESP_CFG_RESET_DELAY_DEFAULT, NULL, NULL, 1);
+    res = prvWiFiStResetWithDelay();
+
+    if (res != espOK)
+    {
+      PrintfLogsCRLF(CLR_RD"ERROR: Wifi Reset! (%s)"CLR_DEF, prvESPErrorHandler(res));
+      continue;
+    }
 
     esp_ap_t access_point[10];
     size_t access_point_find;
-
     espr_t res = esp_set_wifi_mode(ESP_MODE_STA, 0, NULL, NULL, 1);
 
     if (res != espOK)
@@ -208,7 +216,7 @@ void WiFiStTask(void *argument)
       {
         Printf_LogCRLF(CLR_GR"Wifi AP found: \"%s\", RSSI: %i dBm"CLR_DEF, access_point[i].ssid, access_point[i].rssi);
 
-        if (strcmp(config.wifi.ssid, access_point[i]ssid) == 0)
+        if (strcmp(config.wifi.ssid, access_point[i].ssid) == 0)
           config_ap_found = true;
       }
 
@@ -258,6 +266,9 @@ void WiFiStTask(void *argument)
     }
   }
 }
+/******************************************************************************/
+
+
 
 
 /**
@@ -306,6 +317,22 @@ void WiFiErrorHandler(WIFI_ERROR_t error)
     default:
       PrintfLogsCRLF("\t"CLR_DEF"ERROR RTC: "CLR_RD"UNDEFINED"CLR_DEF);
   }
+}
+/******************************************************************************/
+
+
+
+
+/**
+ * @brief          Wi-Fi ST_mode reset ESP8266 with delay
+ * @return         Current espr_t struct state
+ */
+uint8_t prvWiFiStResetWithDelay(void)
+{
+  uint8_t res = espOK;
+  res = esp_reset_with_delay(ESP_CFG_RESET_DELAY_DEFAULT, NULL, NULL, 1);
+
+  return res;
 }
 /******************************************************************************/
 
