@@ -39,13 +39,16 @@ extern "C" {
 /******************************************************************************/
 /* Public defines ----------------------------------------------------------- */
 /******************************************************************************/
+// INIT CONFIG_ID
+#define CONFIG_ID    (1u)
+#define CONFIG_DEVICE_ESS_CONTROl_BOARD    (0x05u)
+
+#define CONFIG_DEVICE_TYPE     (CONFIG_DEVICE_ESS_CONTROl_BOARD)
 
 
 /******************************************************************************/
 /* Public variables --------------------------------------------------------- */
 /******************************************************************************/
-
-
 typedef enum
 {
   CONFIG_INIT_OK = 0,
@@ -57,6 +60,110 @@ typedef enum
   CONFIG_INIT_ERROR_UPDATE
 } CONFIG_INIT_RESULT;
 
+typedef enum
+{
+  CONFIG_RECORD_TYPE_BOOL = 0,
+  CONFIG_RECORD_TYPE_S8,
+  CONFIG_RECORD_TYPE_U8,
+  CONFIG_RECORD_TYPE_S16,
+  CONFIG_RECORD_TYPE_U16,
+  CONFIG_RECORD_TYPE_S32,
+  CONFIG_RECORD_TYPE_U32,
+  CONFIG_RECORD_TYPE_U32_HEX,
+  CONFIG_RECORD_TYPE_FLOAT,
+  CONFIG_RECORD_TYPE_STRING
+} CONFIG_RECORDS_TYPES;
+
+typedef enum
+{
+  CONFIG_RECORD_GROUP_NONE = 0,
+  CONFIG_RECORD_GROUP_GPRS,
+  CONFIG_RECORD_GROUP_WIFI,
+  CONFIG_RECORD_GROUP_MQTT,
+  CONFIG_RECORD_GROUP_WIREN,
+  CONFIG_RECORD_GROUP_GRID_CHECK,
+  CONFIG_RECORD_GROUP_PWR_LOAD,
+  CONFIG_RECORD_GROUP_PV_LOAD,
+  CONFIG_RECORD_GROUP_INVPAROP,
+  CONFIG_RECORD_GROUP_FAN_CTRL
+} CONFIG_RECORDS_GROUPS;
+
+typedef struct
+{
+
+} CONFIG_RECORD_BOOL;
+
+typedef struct
+{
+  int8_t min;
+  int8_t max;
+} CONFIG_RECORD_S8;
+
+typedef struct
+{
+  uint8_t min;
+  uint8_t max;
+} CONFIG_RECORD_U8;
+
+typedef struct
+{
+  int16_t min;
+  int16_t max;
+} CONFIG_RECORD_S16;
+
+typedef struct
+{
+  uint16_t min;
+  uint16_t max;
+} CONFIG_RECORD_U16;
+
+typedef struct
+{
+  int32_t min;
+  int32_t max;
+} CONFIG_RECORD_S32;
+
+typedef struct
+{
+  uint32_t min;
+  uint32_t max;
+} CONFIG_RECORD_U32;
+
+typedef struct
+{
+  float min;
+  float max;
+} CONFIG_RECORD_FLOAT;
+
+typedef struct
+{
+  uint8_t max;
+} CONFIG_RECORD_STRING;
+
+typedef struct
+{
+  void *config;
+  uint8_t type;
+  uint8_t group;
+  uint8_t perm;
+  char *name;
+  union
+  {
+    CONFIG_RECORD_BOOL   bool_t;
+    CONFIG_RECORD_S8     int8_t;
+    CONFIG_RECORD_U8     uint8_t;
+    CONFIG_RECORD_S16    int16_t;
+    CONFIG_RECORD_U16    uint16_t;
+    CONFIG_RECORD_S32    int32_t;
+    CONFIG_RECORD_U32    uint32_t;
+    CONFIG_RECORD_FLOAT  float_t;
+    CONFIG_RECORD_STRING string_t;
+  };
+} CONFIG_DESCRIPTIONS;
+
+
+/******************************************************************************/
+/******************************************************************************/
 typedef struct __attribute__((__packed__))
 {
   uint16_t size;
@@ -81,13 +188,13 @@ typedef struct __attribute__((__packed__))
 
 typedef struct __attribute__((__packed__))
 {
-  u32 pin;
+  uint32_t pin;
   char local[32];
   char host[32];
   char login[16];
   char passw[16];
-  u16 port;
-  u8 data_publish_timeout_s;
+  uint16_t port;
+  uint8_t data_publish_timeout_s;
 } CONFIG_MQTT;
 
 typedef struct __attribute__((__packed__))
