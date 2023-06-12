@@ -158,6 +158,10 @@ void WiFiStTask(void *argument)
   while (!wifi.esp_ready)
     osDelay(100);
 
+  uint8_t errors_scan_ap   = 0;
+  uint8_t errors_join_st   = 0;
+  uint8_t errors_net_check = 0;
+
   for (;;)
   {
     if (WiFiGetError() != WIFI_OK)
@@ -170,14 +174,14 @@ void WiFiStTask(void *argument)
 
     esp_reset_with_delay(ESP_CFG_RESET_DELAY_DEFAULT, NULL, NULL, 1);
 
-    esp_ap_t access_points[10];
+    esp_ap_t access_point[10];
     size_t access_point_find;
 
     espr_t res = esp_set_wifi_mode(ESP_MODE_STA, 0, NULL, NULL, 1);
 
     if (res != espOK)
     {
-      PrintfLogsCRLF(CLR_RD"ERROR: WiFi Access point scan failed (%s)"CLR_DEF, prvESPErrorHandler(res));
+      PrintfLogsCRLF(CLR_RD"ERROR: WiFi set mode ST failed (%s)"CLR_DEF, prvESPErrorHandler(res));
       continue;
     }
 
@@ -188,6 +192,69 @@ void WiFiStTask(void *argument)
     {
       PrintfLogsCRLF(CLR_GR"WiFi Access points scanning ..."CLR_DEF);
       IndicationLedYellowBlink(5);
+
+      res = esp_sta_list_ap(NULL, access_point, ESP_ARRAYSIZE(access_point),
+          &access_point_find, NULL, NULL, 1);
+
+      if (res != espOK)
+      {
+        PrintfLogsCRLF(CLR_RD"ERROR: WiFi Access point scan failed (%s)"CLR_DEF, prvESPErrorHandler(res));
+        continue;
+      }
+
+      PrintfLogsCRLF(CLR_GR"WiFi Access point scan OK"CLR_DEF);
+
+      for (uint8_t i = 0; i < access_point_find; i++)
+      {
+        Printf_LogCRLF(CLR_GR"Wifi AP found: \"%s\", RSSI: %i dBm"CLR_DEF, access_point[i].ssid, access_point[i].rssi);
+
+        if (strcmp(config.wifi.ssid, access_point[i]ssid) == 0)
+          config_ap_found = true;
+      }
+
+      if (!config_ap_found)
+      {
+        PrintfLogsCRLF(CLR_RD"ERROR: WiFi Access point \"%s\" is not found or has a weak signal!"CLR_DEF, config.wifi.ssid, prvESPErrorHandler(res));
+        osDelay(5000);
+        if (++errors_scan_ap > WIFI_MAX_SCAN_ERRORS)
+        {
+          osDelay(60000);
+          errors_scan_ap = 0;
+          continue;
+        }
+      }
+
+      errors_scan_ap = 0;
+      IndicationLedYellowBlink(5);
+      PrintfLogsCRLF("WiFi connecting to \"%s\" network ...", config.wifi.ssid);
+
+      res = esp_sta_join(config.wifi.ssid, config.wifi.passw, NULL, 0, NULL, NULL, 1);
+
+      if (res != espOK)
+      {
+        config_ap_found = false;
+        PrintfLogsCRLF(CLR_RD"ERROR: WiFi connection to \"%s\" network fault! (%s)"CLR_DEF, config.wifi.ssid, prvESPErrorHandler(res));
+        osDelay(1000);
+
+        if (++errors_join_st >WIFI_MAX_JOIN_ERRORS)
+        {
+          osDelay(30000);
+          errors_join_st = 0;
+          continue;
+        }
+        else
+          continue;
+      }
+
+      esp_ip_t ip;
+      esp_sta_copy_ip(&ip, NULL, NULL);
+      PrintfLogsCRLF(CLR_GR"WiFi connected to \"%s\" access point OK"CLR_DEF, config.wifi.ssid);
+      PrintfLogsCRLF(CLR_GR"WiFi station IP address: %u.%u.%u.%u"CLR_DEF, (int) ip.ip[0],
+                                                                              (int) ip.ip[1],
+                                                                              (int) ip.ip[2],
+                                                                              (int) ip.ip[3]);
+
+      errors_join_st = 0;
     }
   }
 }
