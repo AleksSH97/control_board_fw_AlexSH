@@ -42,6 +42,7 @@ extern "C" {
 /* Public defines ----------------------------------------------------------- */
 /******************************************************************************/
 #define WIFI_NUM_OF_ERRORS    (255u)
+#define WIFI_MAX_SCAN_ERRORS  (4u)
 
 #define WIFI_MODE_AP          (true)
 #define WIFI_MODE_ST          (false)
