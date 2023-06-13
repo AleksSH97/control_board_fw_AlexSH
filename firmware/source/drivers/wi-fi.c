@@ -74,9 +74,9 @@ static WIFI_DATA_t wifi;
 espr_t esp_callback_function(esp_evt_t* event);
 char *prvESPErrorHandler(espr_t error);
 
-uint8_t prvWiFiStResetWithDelay(void);
-uint8_t prvWiFiStSetMode(void);
-uint8_t prvWiFiStListAp(esp_ap_t *access_point, size_t *access_point_find);
+uint8_t prvWiFiResetWithDelay(void);
+uint8_t prvWiFiSetMode(uint8_t mode);
+uint8_t prvWiFiListAp(esp_ap_t *access_point, size_t *access_point_find);
 uint8_t prvWiFiAccessPointsFound(size_t access_point_find, esp_ap_t *access_point, bool *config_ap_found);
 uint8_t prvWiFiStaJoin(void);
 uint8_t prvWiFiCopyIp(esp_ip_t *ip);
@@ -161,6 +161,12 @@ void WiFiApTask(void *argument)
 
 
 
+/**
+ * @brief  Function implementing the wifiStTask thread.
+ *         This task drives the esp module in STA mode.
+ * @param  argument: Not used
+ * @return None
+ */
 void WiFiStTask(void *argument)
 {
   while (!wifi.esp_ready)
@@ -182,29 +188,19 @@ void WiFiStTask(void *argument)
     wifi.connection = NULL;
 
     //WiFi reset with delay
-    res = prvWiFiStResetWithDelay();
+    res = prvWiFiResetWithDelay();
 
     if (res != espOK)
-    {
-      PrintfLogsCRLF(CLR_RD"ERROR: WiFi Reset! (%s)"CLR_DEF, prvESPErrorHandler(res));
       continue;
-    }
-    else
-      PrintfLogsCRLF(CLR_GR"WiFi reset OK"CLR_DEF);
 
     esp_ap_t access_point[10];
     size_t access_point_find;
 
     //WiFi set mode ST
-    res = prvWiFiStSetMode();
+    res = prvWiFiSetMode(ESP_MODE_STA);
 
     if (res != espOK)
-    {
-      PrintfLogsCRLF(CLR_RD"ERROR: WiFi set mode ST failed (%s)"CLR_DEF, prvESPErrorHandler(res));
       continue;
-    }
-    else
-      PrintfLogsCRLF(CLR_GR"WiFi mode is now "CLR_YL"ST"CLR_DEF);
 
     //WiFi start searching for access point
     bool config_ap_found = false;
@@ -214,7 +210,7 @@ void WiFiStTask(void *argument)
       PrintfLogsCRLF("WiFi Access points scanning ...");
       IndicationLedYellowBlink(5);
 
-      res = prvWiFiStListAp(access_point, &access_point_find);
+      res = prvWiFiListAp(access_point, &access_point_find);
 
       if (res != espOK)
       {
@@ -391,10 +387,11 @@ void WiFiErrorHandler(WIFI_ERROR_t error)
  * @brief          Wi-Fi ST_mode reset ESP8266 with delay
  * @return         Current espr_t struct state
  */
-uint8_t prvWiFiStResetWithDelay(void)
+uint8_t prvWiFiResetWithDelay(void)
 {
   uint8_t res = espOK;
   res = esp_reset_with_delay(ESP_CFG_RESET_DELAY_DEFAULT, NULL, NULL, 1);
+  PrintfLogsCRLF(CLR_DEF"WiFi Reset: (%s)"CLR_DEF, prvESPErrorHandler(res));
 
   return res;
 }
@@ -404,13 +401,20 @@ uint8_t prvWiFiStResetWithDelay(void)
 
 
 /**
- * @brief          Wi-Fi ST_mode set
+ * @brief          Wi-Fi set mode
  * @return         Current espr_t struct state
  */
-uint8_t prvWiFiStSetMode(void)
+uint8_t prvWiFiSetMode(uint8_t mode)
 {
   uint8_t res = espOK;
-  res = esp_set_wifi_mode(ESP_MODE_STA, 0, NULL, NULL, 1);
+  res = esp_set_wifi_mode(mode, 0, NULL, NULL, 1);
+
+  if (mode == ESP_MODE_STA)
+    PrintfLogsCRLF(CLR_DEF"WiFi set mode ST (%s)"CLR_DEF, prvESPErrorHandler(res));
+  else if (mode == ESP_MODE_AP)
+    PrintfLogsCRLF(CLR_DEF"WiFi set mode AP (%s)"CLR_DEF, prvESPErrorHandler(res));
+  else
+    PrintfLogsCRLF(CLR_DEF"WiFi set mode ST and AP (%s)"CLR_DEF, prvESPErrorHandler(res));
 
   return res;
 }
@@ -423,7 +427,7 @@ uint8_t prvWiFiStSetMode(void)
  * @brief          Wi-Fi ST_mode list of access points
  * @return         Current espr_t struct state
  */
-uint8_t prvWiFiStListAp(esp_ap_t *access_point, size_t *access_point_find)
+uint8_t prvWiFiListAp(esp_ap_t *access_point, size_t *access_point_find)
 {
   uint8_t res = espOK;
   res = esp_sta_list_ap(NULL, access_point, ESP_ARRAYSIZE(access_point),
@@ -688,27 +692,27 @@ char *prvESPErrorHandler(espr_t error)
 {
   switch (error)
   {
-    case espOK:                   return ("OK");                                                        break;
-    case espOKIGNOREMORE:         return ("Ignore sending more data");                                  break;
-    case espERR:                  return ("AT error");                                                  break;
-    case espPARERR:               return ("Wrong parameters");                                          break;
+    case espOK:                   return (CLR_GR"OK");                                                        break;
+    case espOKIGNOREMORE:         return (CLR_RD"Ignore sending more data");                                  break;
+    case espERR:                  return (CLR_RD"AT error");                                                  break;
+    case espPARERR:               return (CLR_RD"Wrong parameters");                                          break;
     /* Reboot board if memory leak detected */
     case espERRMEM:               NVIC_SystemReset(); return ("Memory error");                          break;
-    case espTIMEOUT:              return ("Timeout");                                                   break;
-    case espCONT:                 return ("Still some command to be processed in current command");     break;
-    case espCLOSED:               return ("Connection just closed");                                    break;
-    case espINPROG:               return ("Operation is in progress");                                  break;
-    case espERRNOIP:              return ("Station does not have IP address");                          break;
+    case espTIMEOUT:              return (CLR_RD"Timeout");                                                   break;
+    case espCONT:                 return (CLR_RD"Still some command to be processed in current command");     break;
+    case espCLOSED:               return (CLR_RD"Connection just closed");                                    break;
+    case espINPROG:               return (CLR_RD"Operation is in progress");                                  break;
+    case espERRNOIP:              return (CLR_RD"Station does not have IP address");                          break;
     /* This is impossible state, when the device is connected to MQTT broker and start the second connection */
-    case espERRNOFREECONN:        NVIC_SystemReset(); return ("There is no free connection available to start");
-    case espERRCONNTIMEOUT:       return ("Timeout received when connection to access point");          break;
-    case espERRPASS:              return ("Invalid password for access point");                         break;
-    case espERRNOAP:              return ("No access point found with specific SSID and MAC address");  break;
-    case espERRCONNFAIL:          return ("Connection failed to access point");                         break;
-    case espERRWIFINOTCONNECTED:  return ("Wifi not connected to access point");                        break;
-    case espERRNODEVICE:          return ("Device is not present");                                     break;
-    case espERRBLOCKING:          return ("Blocking mode command is not allowed");                      break;
-    default:                      return ("???");
+    case espERRNOFREECONN:        NVIC_SystemReset(); return (CLR_RD"There is no free connection available to start");
+    case espERRCONNTIMEOUT:       return (CLR_RD"Timeout received when connection to access point");          break;
+    case espERRPASS:              return (CLR_RD"Invalid password for access point");                         break;
+    case espERRNOAP:              return (CLR_RD"No access point found with specific SSID and MAC address");  break;
+    case espERRCONNFAIL:          return (CLR_RD"Connection failed to access point");                         break;
+    case espERRWIFINOTCONNECTED:  return (CLR_RD"Wifi not connected to access point");                        break;
+    case espERRNODEVICE:          return (CLR_RD"Device is not present");                                     break;
+    case espERRBLOCKING:          return (CLR_RD"Blocking mode command is not allowed");                      break;
+    default:                      return (CLR_RD"???");
   };
 }
 /******************************************************************************/
