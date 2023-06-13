@@ -153,10 +153,38 @@ WIFI_ERROR_t WiFiStart(bool mode_ap)
 
 
 
+/**
+ * @brief  Function implementing the wifiApTask thread.
+ *         This task drives the esp module in AP mode.
+ * @param  argument: Not used
+ * @retval None
+ */
 void WiFiApTask(void *argument)
 {
-  for (;;);
+  while (!wifi.esp_ready)
+    osDelay(100);
+
+  uint8_t res = espOK;
+
+  for (;;)
+  {
+    if (WiFiGetError() != WIFI_OK)
+    {
+      WiFiErrorHandler(WiFiGetError());
+      continue;
+    }
+
+    wifi.netconnection_server = NULL;
+    wifi.netconnection_client = NULL;
+
+    res = prvWiFiResetWithDelay();
+
+    if (res != espOK)
+      continue;
+
+  }
 }
+/******************************************************************************/
 
 
 
