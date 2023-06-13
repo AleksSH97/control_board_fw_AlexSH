@@ -77,6 +77,7 @@ typedef enum {
     espERRWIFINOTCONNECTED,                     /*!< Wifi not connected to access point */
     espERRNODEVICE,                             /*!< Device is not present */
     espERRBLOCKING,                             /*!< Blocking mode command is not allowed */
+    espERRPARSEIP
 } espr_t;
 
 /**
