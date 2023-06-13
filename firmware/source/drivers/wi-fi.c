@@ -82,6 +82,7 @@ uint8_t prvWiFiStaJoin(void);
 uint8_t prvWiFiCopyIp(esp_ip_t *ip);
 uint8_t prvWiFiStaIsJoined(void);
 uint8_t prvWiFiPing(void);
+uint8_t prvWiFiParseIp(const char **str, esp_ip_t *ip);
 
 
 /******************************************************************************/
@@ -182,6 +183,23 @@ void WiFiApTask(void *argument)
     if (res != espOK)
       continue;
 
+    wifi.ap_ready = false;
+    esp_sta_t stations[1];
+    size_t stations_quantity;
+
+    res = prvWiFiSetMode(ESP_MODE_AP);
+
+    if (res != espOK)
+      continue;
+
+    esp_ip_t ip, gw, nm;
+    const char *str = NULL;
+
+    str = config.mqtt.local;
+    res = prvWiFiParseIp(&str, &ip);
+
+    if (res != espOK)
+      continue;
   }
 }
 /******************************************************************************/
@@ -567,6 +585,28 @@ uint8_t prvWiFiPing(void)
 
 
 
+/**
+ * @brief          Wi-Fi ping
+ * @return         Current espr_t struct state
+ */
+uint8_t prvWiFiParseIp(const char **str, esp_ip_t *ip)
+{
+  uint8_t res = espOK;
+  uint8_t parse_result = espi_parse_ip(str, ip);
+
+  if (parse_result != 1)
+  {
+    res = espERRPARSEIP;
+    PrintfLogsCRLF(CLR_DEF"Parse IP (%s)"CLR_DEF, prvESPErrorHandler(res));
+  }
+
+  return res;
+}
+/******************************************************************************/
+
+
+
+
 espr_t esp_callback_function(esp_evt_t* event)
 {
   switch (esp_evt_get_type(event))
@@ -748,6 +788,7 @@ char *prvESPErrorHandler(espr_t error)
     case espERRWIFINOTCONNECTED:  return (CLR_RD"Wifi not connected to access point");                        break;
     case espERRNODEVICE:          return (CLR_RD"Device is not present");                                     break;
     case espERRBLOCKING:          return (CLR_RD"Blocking mode command is not allowed");                      break;
+    case espERRPARSEIP:           return (CLR_RD"Parse IP error");                                            break;
     default:                      return (CLR_RD"???");
   };
 }
