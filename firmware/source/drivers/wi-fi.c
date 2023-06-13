@@ -83,6 +83,7 @@ uint8_t prvWiFiCopyIp(esp_ip_t *ip);
 uint8_t prvWiFiStaIsJoined(void);
 uint8_t prvWiFiPing(void);
 uint8_t prvWiFiParseIp(const char **str, esp_ip_t *ip);
+uint8_t prvWiFiSetIp(esp_ip_t *ip, esp_ip_t *gw, esp_ip_t *nm);
 
 
 /******************************************************************************/
@@ -197,6 +198,25 @@ void WiFiApTask(void *argument)
 
     str = config.mqtt.local;
     res = prvWiFiParseIp(&str, &ip);
+
+    if (res != espOK)
+      continue;
+
+    str = config.mqtt.local;
+    res = prvWiFiParseIp(&str, &gw);
+
+    if (res != espOK)
+      continue;
+
+    str = "255.255.255.0";
+    res = prvWiFiParseIp(&str, &nm);
+
+    if (res != espOK)
+      continue;
+
+    PrintfLogsCRLF(CLR_GR"WiFi mode is now "CLR_YL"AP"CLR_DEF);
+
+    res = prvWiFiSetIp(&ip, &gw, &nm);
 
     if (res != espOK)
       continue;
@@ -586,7 +606,7 @@ uint8_t prvWiFiPing(void)
 
 
 /**
- * @brief          Wi-Fi ping
+ * @brief          Wi-Fi parse IP
  * @return         Current espr_t struct state
  */
 uint8_t prvWiFiParseIp(const char **str, esp_ip_t *ip)
@@ -599,6 +619,23 @@ uint8_t prvWiFiParseIp(const char **str, esp_ip_t *ip)
     res = espERRPARSEIP;
     PrintfLogsCRLF(CLR_DEF"Parse IP (%s)"CLR_DEF, prvESPErrorHandler(res));
   }
+
+  return res;
+}
+/******************************************************************************/
+
+
+
+
+/**
+ * @brief          Wi-Fi set IP
+ * @return         Current espr_t struct state
+ */
+uint8_t prvWiFiSetIp(esp_ip_t *ip, esp_ip_t *gw, esp_ip_t *nm)
+{
+  uint8_t res = espOK;
+
+  res = esp_ap_setip(ip, gw, nm, 0, NULL, NULL, 1);
 
   return res;
 }
