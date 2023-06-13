@@ -28,6 +28,24 @@
 #define WIFI_MAX_JOIN_ERRORS         (2u)
 #define WIFI_MAX_NET_CHECK_ERRORS    (10u)
 
+#define WIFI_NUM_OF_ERRORS           (255u)
+
+#define WIFI_MAX_SCAN_ERRORS         (4u)
+#define WIFI_MAX_JOIN_ERRORS         (2u)
+#define WIFI_MAX_NET_CHECK_ERRORS    (10u)
+
+#define WIFI_MODE_AP                 (true)
+#define WIFI_MODE_ST                 (false)
+
+#define WIFI_RF_CHANNEL              (9u)
+
+#define WIFI_NOT_HIDE                (0u)
+#define WIFI_HIDE                    (1u)
+
+#define WIFI_NOT_DEFAULT             (0u)
+#define WIFI_DEFAULT                 (1u)
+
+#define WIFI_BLOCKING                (1u)
 
 /******************************************************************************/
 /* Private variables -------------------------------------------------------- */
