@@ -102,6 +102,7 @@ uint8_t prvWiFiStaIsJoined(void);
 uint8_t prvWiFiPing(void);
 uint8_t prvWiFiParseIp(const char **str, esp_ip_t *ip);
 uint8_t prvWiFiSetIp(esp_ip_t *ip, esp_ip_t *gw, esp_ip_t *nm);
+uint8_t prvWiFiApConfigure(const char *ssid, const char *password, uint8_t channel, esp_ecn_t encryption, uint8_t max_stations, uint8_t hide, uint8_t def, const esp_api_cmd_evt_fn evt_fn, void *const evt_argument, const uint32_t blocking);
 
 
 /******************************************************************************/
@@ -238,6 +239,9 @@ void WiFiApTask(void *argument)
 
     if (res != espOK)
       continue;
+
+    res = prvWiFiApConfigure("ESS_BOARD", "ess_local", WIFI_RF_CHANNEL, ESP_ECN_WPA2_PSK,
+        ESP_ARRAYSIZE(stations), WIFI_NOT_HIDE, WIFI_DEFAULT, NULL, NULL, WIFI_BLOCKING);
   }
 }
 /******************************************************************************/
@@ -654,6 +658,26 @@ uint8_t prvWiFiSetIp(esp_ip_t *ip, esp_ip_t *gw, esp_ip_t *nm)
   uint8_t res = espOK;
 
   res = esp_ap_setip(ip, gw, nm, 0, NULL, NULL, 1);
+  PrintfLogsCRLF(CLR_DEF"WiFi set IP AP (%s)"CLR_DEF, prvESPErrorHandler(res));
+
+  return res;
+}
+/******************************************************************************/
+
+
+
+
+/**
+ * @brief          Wi-Fi configure AP
+ * @return         Current espr_t struct state
+ */
+uint8_t prvWiFiApConfigure(const char *ssid, const char *password, uint8_t channel, esp_ecn_t encryption, uint8_t max_stations,
+    uint8_t hide, uint8_t def, const esp_api_cmd_evt_fn evt_fn, void *const evt_argument, const uint32_t blocking)
+{
+  uint8_t res = espOK;
+
+  res = esp_ap_configure(ssid, password, channel, encryption, max_stations, hide, def, evt_fn, evt_argument, blocking);
+  PrintfLogsCRLF(CLR_DEF"WiFi configure AP (%s)"CLR_DEF, prvESPErrorHandler(res));
 
   return res;
 }
