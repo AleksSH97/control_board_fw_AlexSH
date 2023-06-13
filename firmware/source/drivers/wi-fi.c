@@ -241,19 +241,13 @@ void WiFiStTask(void *argument)
       res = prvWiFiListAp(access_point, &access_point_find);
 
       if (res != espOK)
-      {
-        PrintfLogsCRLF(CLR_RD"ERROR: WiFi Access point scan failed (%s)"CLR_DEF, prvESPErrorHandler(res));
         continue;
-      }
-      else
-        PrintfLogsCRLF(CLR_GR"WiFi Access point scan OK"CLR_DEF);
 
       //WiFi check founded access points
       res = prvWiFiAccessPointsFound(access_point_find, access_point, &config_ap_found);
 
       if (!config_ap_found)
       {
-        PrintfLogsCRLF(CLR_RD"ERROR: WiFi Access point \"%s\" is not found or has a weak signal!"CLR_DEF, config.wifi.ssid, prvESPErrorHandler(res));
         osDelay(5000);
         if (++errors_scan_ap > WIFI_MAX_SCAN_ERRORS)
         {
@@ -264,7 +258,7 @@ void WiFiStTask(void *argument)
       }
 
       errors_scan_ap = 0;
-      IndicationLedYellowBlink(5);
+      IndicationLedYellowBlink(2);
       PrintfLogsCRLF("WiFi connecting to \"%s\" network ...", config.wifi.ssid);
 
       //WiFi join as station to access point
@@ -273,7 +267,6 @@ void WiFiStTask(void *argument)
       if (res != espOK)
       {
         config_ap_found = false;
-        PrintfLogsCRLF(CLR_RD"ERROR: WiFi connection to \"%s\" network fault! (%s)"CLR_DEF, config.wifi.ssid, prvESPErrorHandler(res));
         osDelay(1000);
         if (++errors_join_st > WIFI_MAX_JOIN_ERRORS)
         {
@@ -287,19 +280,12 @@ void WiFiStTask(void *argument)
 
       //WiFi copy IP
       esp_ip_t ip;
-
       res = prvWiFiCopyIp(&ip);
 
-      PrintfLogsCRLF(CLR_GR"WiFi connected to \"%s\" access point OK"CLR_DEF, config.wifi.ssid);
-      PrintfLogsCRLF(CLR_GR"WiFi station IP address: %u.%u.%u.%u"CLR_DEF, (int) ip.ip[0],
-      (int) ip.ip[1], (int) ip.ip[2], (int) ip.ip[3]);
       errors_join_st = 0;
 
       if (res != espOK)
-      {
-        PrintfLogsCRLF(CLR_RD"ERROR: Copy IP fault! (%s)"CLR_DEF, prvESPErrorHandler(res));
         continue;
-      }
     }
 
     PrintfLogsCRLF("Checking \"%s\" for internet connection ...", config.wifi.ssid);
@@ -324,8 +310,6 @@ void WiFiStTask(void *argument)
           if (++errors_net_check > WIFI_MAX_NET_CHECK_ERRORS)
           {
             errors_net_check = 0;
-            PrintfLogsCRLF(CLR_RD"ERROR: \"%s\" access point doesn't have internet connection!"CLR_DEF, config.wifi.ssid);
-            PrintfLogsCRLF("Checking \"%s\" for internet connection ...", config.wifi.ssid);
             continue;
           }
           else
@@ -461,6 +445,8 @@ uint8_t prvWiFiListAp(esp_ap_t *access_point, size_t *access_point_find)
   res = esp_sta_list_ap(NULL, access_point, ESP_ARRAYSIZE(access_point),
       access_point_find, NULL, NULL, 1);
 
+  PrintfLogsCRLF(CLR_DEF"WiFi Access point scan: (%s)"CLR_DEF, prvESPErrorHandler(res));
+
   return res;
 }
 /******************************************************************************/
@@ -469,7 +455,7 @@ uint8_t prvWiFiListAp(esp_ap_t *access_point, size_t *access_point_find)
 
 
 /**
- * @brief          Wi-Fi ST_mode access poits check
+ * @brief          Wi-Fi access poits check
  * @return         Current espr_t struct state
  */
 uint8_t prvWiFiAccessPointsFound(size_t access_point_find, esp_ap_t *access_point, bool *config_ap_found)
@@ -483,6 +469,8 @@ uint8_t prvWiFiAccessPointsFound(size_t access_point_find, esp_ap_t *access_poin
     if (strcmp(config.wifi.ssid, access_point[i].ssid) == 0)
       *config_ap_found = true;
   }
+
+  PrintfLogsCRLF("WiFi Access point \"%s\" is (%s)"CLR_DEF, config.wifi.ssid, prvESPErrorHandler(res));
 
   return res;
 }
@@ -500,6 +488,8 @@ uint8_t prvWiFiStaJoin(void)
   uint8_t res = espOK;
   res = esp_sta_join(config.wifi.ssid, config.wifi.passw, NULL, 0, NULL, NULL, 1);
   osDelay(1000);
+
+  PrintfLogsCRLF(CLR_DEF"WiFi connection to \"%s\" network (%s)"CLR_DEF, config.wifi.ssid, prvESPErrorHandler(res));
 
   return res;
 }
@@ -536,6 +526,18 @@ uint8_t prvWiFiCopyIp(esp_ip_t *ip)
   uint8_t res = espOK;
   res = esp_sta_copy_ip(ip, NULL, NULL);
 
+  if (res != espOK)
+  {
+    PrintfLogsCRLF(CLR_DEF"Copy IP fault! (%s)"CLR_DEF, prvESPErrorHandler(res));
+    return res;
+  }
+  else
+  {
+    PrintfLogsCRLF(CLR_GR"WiFi connected to \"%s\" access point OK"CLR_DEF, config.wifi.ssid);
+    PrintfLogsCRLF(CLR_GR"WiFi station IP address: %u.%u.%u.%u"CLR_DEF, (int) ip->ip[0],
+    (int) ip->ip[1], (int) ip->ip[2], (int) ip->ip[3]);
+  }
+
   return res;
 }
 /******************************************************************************/
@@ -551,6 +553,12 @@ uint8_t prvWiFiPing(void)
 {
   uint8_t res = espOK;
   res = esp_ping("8.8.8.8", NULL, NULL, NULL, 1);
+
+  if (res != espOK)
+  {
+    PrintfLogsCRLF(CLR_RD"ERROR: \"%s\" access point doesn't have internet connection!"CLR_DEF, config.wifi.ssid);
+    PrintfLogsCRLF("Checking \"%s\" for internet connection ...", config.wifi.ssid);
+  }
 
   return res;
 }
