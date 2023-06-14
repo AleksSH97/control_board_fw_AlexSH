@@ -103,6 +103,10 @@ uint8_t prvWiFiPing(void);
 uint8_t prvWiFiParseIp(const char **str, esp_ip_t *ip);
 uint8_t prvWiFiSetIp(esp_ip_t *ip, esp_ip_t *gw, esp_ip_t *nm);
 uint8_t prvWiFiApConfigure(const char *ssid, const char *password, uint8_t channel, esp_ecn_t encryption, uint8_t max_stations, uint8_t hide, uint8_t def, const esp_api_cmd_evt_fn evt_fn, void *const evt_argument, const uint32_t blocking);
+uint8_t prvWiFiApListSta(esp_sta_t *stations, size_t *stations_quantity, const uint32_t blocking);
+uint8_t prvWiFiConnectionNew(WIFI_DATA_t *wifi);
+
+void prvWiFiStationList(esp_sta_t *stations, size_t stations_quantity);
 
 
 /******************************************************************************/
@@ -242,6 +246,20 @@ void WiFiApTask(void *argument)
 
     res = prvWiFiApConfigure("ESS_BOARD", "ess_local", WIFI_RF_CHANNEL, ESP_ECN_WPA2_PSK,
         ESP_ARRAYSIZE(stations), WIFI_NOT_HIDE, WIFI_DEFAULT, NULL, NULL, WIFI_BLOCKING);
+
+    if (res != espOK)
+      continue;
+
+    res = prvWiFiApListSta(stations, &stations_quantity, WIFI_BLOCKING);
+
+    if (res != espOK)
+      continue;
+
+    prvWiFiStationList(stations, stations_quantity);
+    res = prvWiFiConnectionNew(&wifi);
+
+    if (res != espOK)
+      continue;
   }
 }
 /******************************************************************************/
@@ -680,6 +698,60 @@ uint8_t prvWiFiApConfigure(const char *ssid, const char *password, uint8_t chann
   PrintfLogsCRLF(CLR_DEF"WiFi configure AP (%s)"CLR_DEF, prvESPErrorHandler(res));
 
   return res;
+}
+/******************************************************************************/
+
+
+
+
+/**
+ * @brief          Wi-Fi list of stations connected to access point
+ * @return         Current espr_t struct state
+ */
+uint8_t prvWiFiApListSta(esp_sta_t *stations, size_t *stations_quantity, const uint32_t blocking)
+{
+  uint8_t res = espOK;
+
+  res = esp_ap_list_sta(stations, ESP_ARRAYSIZE(stations), stations_quantity, NULL, NULL, blocking);
+  PrintfLogsCRLF(CLR_DEF"WiFi station scan (%s)"CLR_DEF, prvESPErrorHandler(res));
+
+  return res;
+}
+/******************************************************************************/
+
+
+
+
+/**
+ * @brief          Wi-Fi list of found stations
+ * @return         None
+ */
+void prvWiFiStationList(esp_sta_t *stations, size_t stations_quantity)
+{
+  for (uint8_t i = 0; i < stations_quantity; i++)
+    PrintfLogsCRLF(CLR_GR"Wifi Station found: %u.%u.%u.%u"CLR_DEF, stations[i].ip.ip[0], stations[i].ip.ip[1], stations[i].ip.ip[2], stations[i].ip.ip[3]);
+}
+/******************************************************************************/
+
+
+
+
+/**
+ * @brief          Wi-Fi create new netconn connection
+ * @return         Current espr_t struct state
+ */
+uint8_t prvWiFiConnectionNew(WIFI_DATA_t *wifi)
+{
+  wifi->ap_ready = true;
+  wifi->netconnection_server = esp_netconn_new(ESP_NETCONN_TYPE_TCP);
+
+  if (wifi->netconnection_server == NULL)
+  {
+    PrintfLogsCRLF(CLR_RD"Cannot create netconn_server NETCONN"CLR_DEF);
+    return espERRCONNFAIL;
+  }
+
+  return espOK;
 }
 /******************************************************************************/
 
