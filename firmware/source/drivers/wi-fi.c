@@ -105,7 +105,8 @@ uint8_t prvWiFiSetIp(esp_ip_t *ip, esp_ip_t *gw, esp_ip_t *nm);
 uint8_t prvWiFiApConfigure(const char *ssid, const char *password, uint8_t channel, esp_ecn_t encryption, uint8_t max_stations, uint8_t hide, uint8_t def, const esp_api_cmd_evt_fn evt_fn, void *const evt_argument, const uint32_t blocking);
 uint8_t prvWiFiApListSta(esp_sta_t *stations, size_t *stations_quantity, const uint32_t blocking);
 uint8_t prvWiFiConnectionNew(WIFI_DATA_t *wifi);
-uint8_t prvWiFiBindConnection(WIFI_DATA_t wifi, uint16_t port);
+uint8_t prvWiFiBindConnection(esp_netconn_p netconnection_server, uint16_t port);
+uint8_t prvWiFiListenConnection(esp_netconn_p netconnection_server);
 
 void prvWiFiStationList(esp_sta_t *stations, size_t stations_quantity);
 
@@ -262,7 +263,10 @@ void WiFiApTask(void *argument)
     if (res != espOK)
       continue;
 
-    res = prvWiFiBindConnection(wifi, config.mqtt.port);
+    res = prvWiFiBindConnection(wifi.netconnection_server, config.mqtt.port);
+
+    if (res != espOK)
+      continue;
 
 
   }
@@ -767,15 +771,37 @@ uint8_t prvWiFiConnectionNew(WIFI_DATA_t *wifi)
  * @brief          Wi-Fi bind a connection to a specific port
  * @return         Current espr_t struct state
  */
-uint8_t prvWiFiBindConnection(WIFI_DATA_t wifi, uint16_t port)
+uint8_t prvWiFiBindConnection(esp_netconn_p netconnection_server, uint16_t port)
 {
   uint8_t res = espOK;
 
-  res = esp_netconn_bind(wifi.netconnection_server, port);
+  res = esp_netconn_bind(netconnection_server, port);
+
+  PrintfLogsCRLF(CLR_DEF"Netconn on port %u (%s)"CLR_DEF, config.mqtt.port, prvESPErrorHandler(res));
 
   return res;
 }
 /******************************************************************************/
+
+
+
+
+/**
+ * @brief          Wi-Fi listen on previously binded connection
+ * @return         Current espr_t struct state
+ */
+uint8_t prvWiFiListenConnection(esp_netconn_p netconnection_server)
+{
+  uint8_t res = espOK;
+
+  res = esp_netconn_listen(netconnection_server);
+
+  PrintfLogsCRLF(CLR_DEF"Listening to net connection (%s)"CLR_DEF, prvESPErrorHandler(res));
+
+  return res;
+}
+/******************************************************************************/
+
 
 
 
