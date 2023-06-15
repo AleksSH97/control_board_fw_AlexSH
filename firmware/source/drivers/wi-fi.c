@@ -105,6 +105,7 @@ uint8_t prvWiFiSetIp(esp_ip_t *ip, esp_ip_t *gw, esp_ip_t *nm);
 uint8_t prvWiFiApConfigure(const char *ssid, const char *password, uint8_t channel, esp_ecn_t encryption, uint8_t max_stations, uint8_t hide, uint8_t def, const esp_api_cmd_evt_fn evt_fn, void *const evt_argument, const uint32_t blocking);
 uint8_t prvWiFiApListSta(esp_sta_t *stations, size_t *stations_quantity, const uint32_t blocking);
 uint8_t prvWiFiConnectionNew(WIFI_DATA_t *wifi);
+uint8_t prvWiFiBindConnection(WIFI_DATA_t wifi, uint16_t port);
 
 void prvWiFiStationList(esp_sta_t *stations, size_t stations_quantity);
 
@@ -260,6 +261,10 @@ void WiFiApTask(void *argument)
 
     if (res != espOK)
       continue;
+
+    res = prvWiFiBindConnection(wifi, config.mqtt.port);
+
+
   }
 }
 /******************************************************************************/
@@ -755,6 +760,22 @@ uint8_t prvWiFiConnectionNew(WIFI_DATA_t *wifi)
 }
 /******************************************************************************/
 
+
+
+
+/**
+ * @brief          Wi-Fi bind a connection to a specific port
+ * @return         Current espr_t struct state
+ */
+uint8_t prvWiFiBindConnection(WIFI_DATA_t wifi, uint16_t port)
+{
+  uint8_t res = espOK;
+
+  res = esp_netconn_bind(wifi.netconnection_server, port);
+
+  return res;
+}
+/******************************************************************************/
 
 
 
