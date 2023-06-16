@@ -47,6 +47,8 @@
 
 #define WIFI_BLOCKING                (1u)
 
+#define WIFI_RECEIVE_TIMEOUT         (1000u)
+
 /******************************************************************************/
 /* Private variables -------------------------------------------------------- */
 /******************************************************************************/
@@ -70,7 +72,7 @@ typedef struct
   esp_conn_p connection;
   esp_netconn_p netconnection_server;
   esp_netconn_p netconnection_client;
-  esp_pbuf_p    pbuf;
+  esp_pbuf_p    packet_buffer;
 
   WIFI_ERROR_t error;
 
@@ -107,8 +109,15 @@ uint8_t prvWiFiApListSta(esp_sta_t *stations, size_t *stations_quantity, const u
 uint8_t prvWiFiConnectionNew(WIFI_DATA_t *wifi);
 uint8_t prvWiFiBindConnection(esp_netconn_p netconnection_server, uint16_t port);
 uint8_t prvWiFiListenConnection(esp_netconn_p netconnection_server);
+uint8_t prvWiFiAcceptConnection(esp_netconn_p netconnection_server, esp_netconn_p *netconnection_client);
+uint8_t prvWiFiReceiveConnection(esp_netconn_p netconnection_client, esp_pbuf_p* pbuf);
 
 void prvWiFiStationList(esp_sta_t *stations, size_t stations_quantity);
+void prvWiFiSetReceiveTimeout(esp_netconn_p netconnection_client, uint32_t timeout);
+void prvWiFiConcatenatePacketBuffers(esp_pbuf_p head, const esp_pbuf_p tail);
+void prvWiFiFreePacketBuffer(esp_pbuf_p packet_buffer);
+void prvWiFiConnectionClose(esp_netconn_p netconnection_client);
+void prvWiFiConnectionDelete(esp_netconn_p netconnection_client);
 
 
 /******************************************************************************/
@@ -268,7 +277,62 @@ void WiFiApTask(void *argument)
     if (res != espOK)
       continue;
 
+    res = prvWiFiListenConnection(wifi.netconnection_server);
 
+    if (res != espOK)
+      continue;
+
+    for (;;)
+    {
+      res = prvWiFiAcceptConnection(wifi.netconnection_server, &wifi.netconnection_client);
+
+      if (res != espOK)
+        continue;
+
+      wifi.host_connected = true;
+      esp_pbuf_p packet_buffer = NULL;
+
+      prvWiFiSetReceiveTimeout(wifi.netconnection_client, WIFI_RECEIVE_TIMEOUT);
+
+      for (;;)
+      {
+        res = prvWiFiReceiveConnection(wifi.netconnection_client, &packet_buffer);
+
+        if (res == espTIMEOUT)
+        {
+          if (!wifi.host_connected)
+            break;
+          if (wifi.restart)
+            break;
+        }
+        else if (res != espOK)
+          break;
+
+        PrintfLogsCRLF(CLR_GR"NETCONN data received, %u/%u bytes"CLR_DEF, (int) esp_pbuf_length(packet_buffer, 1), (int) esp_pbuf_length(packet_buffer, 0));
+
+        if (wifi.packet_buffer == NULL)
+          wifi.packet_buffer = packet_buffer;
+        else
+          prvWiFiConcatenatePacketBuffers(wifi.packet_buffer, packet_buffer);
+
+        //TODO WRITE BROKET PARSER
+
+        prvWiFiFreePacketBuffer(wifi.packet_buffer);
+        wifi.packet_buffer = NULL;
+      }
+
+      if (wifi.netconnection_client)
+      {
+        prvWiFiConnectionClose(wifi.netconnection_client);
+        prvWiFiConnectionDelete(wifi.netconnection_client);
+        wifi.netconnection_client = NULL;
+      }
+      if (wifi.packet_buffer != NULL)
+      {
+        prvWiFiFreePacketBuffer(wifi.packet_buffer);
+        wifi.packet_buffer = NULL;
+      }
+    }
   }
 }
 /******************************************************************************/
@@ -799,6 +863,115 @@ uint8_t prvWiFiListenConnection(esp_netconn_p netconnection_server)
   PrintfLogsCRLF(CLR_DEF"Listening to net connection (%s)"CLR_DEF, prvESPErrorHandler(res));
 
   return res;
+}
+/******************************************************************************/
+
+
+
+
+/**
+ * @brief          Wi-Fi accept a new connection
+ * @return         Current espr_t struct state
+ */
+uint8_t prvWiFiAcceptConnection(esp_netconn_p netconnection_server, esp_netconn_p *netconnection_client)
+{
+  uint8_t res = espOK;
+
+  res = esp_netconn_accept(netconnection_server, netconnection_client);
+
+  PrintfLogsCRLF(CLR_DEF"Accept to new connection (%s)"CLR_DEF, prvESPErrorHandler(res));
+
+  return res;
+}
+/******************************************************************************/
+
+
+
+
+/**
+ * @brief          Wi-Fi set timeout for receiving data
+ * @return         NONE
+ */
+void prvWiFiSetReceiveTimeout(esp_netconn_p netconnection_client, uint32_t timeout)
+{
+
+  esp_netconn_set_receive_timeout(netconnection_client, timeout);
+  PrintfLogsCRLF(CLR_DEF"Receive timeout is set to"CLR_GR "(%u)" "seconds"CLR_DEF, timeout);
+}
+/******************************************************************************/
+
+
+
+
+/**
+ * @brief          Wi-Fi free packet buffer
+ * @return         NONE
+ */
+void prvWiFiFreePacketBuffer(esp_pbuf_p packet_buffer)
+{
+  esp_pbuf_free(packet_buffer);
+  PrintfLogsCRLF(CLR_DEF"Free packet buffer");
+}
+/******************************************************************************/
+
+
+
+
+/**
+ * @brief          Wi-Fi receive data from connection
+ * @return         Current espr_t struct state
+ */
+uint8_t prvWiFiReceiveConnection(esp_netconn_p netconnection_client, esp_pbuf_p* pbuf)
+{
+  uint8_t res = espOK;
+
+  res = esp_netconn_receive(netconnection_client, pbuf);
+
+  PrintfLogsCRLF(CLR_DEF"NETCONN data receiving (%s)"CLR_DEF, prvESPErrorHandler(res));
+
+  return res;
+}
+/******************************************************************************/
+
+
+
+
+/**
+ * @brief          Wi-Fi concatenate 2 packet buffers together to one big packet
+ * @return         NONE
+ */
+void prvWiFiConcatenatePacketBuffers(esp_pbuf_p head, const esp_pbuf_p tail)
+{
+  esp_pbuf_cat(head, tail);
+  PrintfLogsCRLF(CLR_DEF"Concatenated 2 buffers into one");
+}
+/******************************************************************************/
+
+
+
+
+/**
+ * @brief          Wi-Fi close netconn connection
+ * @return         NONE
+ */
+void prvWiFiConnectionClose(esp_netconn_p netconnection_client)
+{
+  esp_netconn_close(netconnection_client);
+  PrintfLogsCRLF(CLR_DEF"Closed netconnection");
+}
+/******************************************************************************/
+
+
+
+
+/**
+ * @brief          Wi-Fi delete netconn connection
+ * @return         NONE
+ */
+void prvWiFiConnectionDelete(esp_netconn_p netconnection_client)
+{
+  esp_netconn_delete(netconnection_client);
+  PrintfLogsCRLF(CLR_DEF"Deleted netconnection");
 }
 /******************************************************************************/
 
