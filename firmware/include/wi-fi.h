@@ -74,6 +74,7 @@ uint8_t WiFiGetError(void);
 void WiFiErrorHandler(WIFI_ERROR_t error);
 
 uint8_t WiFiStart(bool mode_ap);
+void WiFiInit(void);
 void WiFiApTask(void *argument);
 void WiFiStTask(void *argument);
 

@@ -36,7 +36,7 @@
 #define INDICATION_LED_ERROR_NUM                  (2u)
 #define INDICATION_LED_BUTTON_NUM                 (1u)
 
-#define N_LED                          (3u)
+#define N_LED                        (3u)
 
 #define LED_RD_Pin                   LL_GPIO_PIN_13
 #define LED_RD_GPIO_Port             GPIOC
@@ -90,12 +90,16 @@ extern mculed_t mculed[N_LED];
 /* Public functions --------------------------------------------------------- */
 /******************************************************************************/
 void IndicationInit(void);
+
 void IndicationLedYellow(void);
+void IndicationLedYellowBlink(uint8_t blinks);
+
 void IndicationLedGreen(void);
-void IndicationLedLeft(void);
-void IndicationLedRight(void);
+
 void IndicationLedLoading(void);
+
 void IndicationLedError(void);
+
 void IndicationLedButton(void);
 void IndicationLedReady(void);
 
