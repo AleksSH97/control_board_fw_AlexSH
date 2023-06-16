@@ -554,11 +554,11 @@ espi_parse_received(esp_recv_t* rcv) {
 
     if (esp8266_logs)
     {
-        Printf_LogCONT(CLR_PR"");
+        PrintfLogsCont(CLR_PR"");
         for (uint8_t i = 0; i < rcv->len; ++i)
             if (!((rcv->data[i] == '\r') || (rcv->data[i] == '\n')))
-              Printf_LogCONT("%c", rcv->data[i]);
-        Printf_LogCRLF(""CLR_DEF);
+              PrintfLogsCont("%c", rcv->data[i]);
+        PrintfLogsCont(""CLR_DEF);
     }
 
     /* Detect most common responses from device */
