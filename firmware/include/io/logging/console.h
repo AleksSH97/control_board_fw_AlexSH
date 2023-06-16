@@ -28,6 +28,7 @@
 #include "rtc.h"
 #include "microrl.h"
 #include "microrl_config.h"
+#include "wi-fi.h"
 
 #ifdef __cplusplus
 extern "C" {

@@ -31,11 +31,13 @@
 #define _CMD_BACK                   "back"
 #define _CMD_TIME                   "time"
 
+#define _CMD_WIFI                   "wifi"
+
 /* Arguments for set/clear */
 #define _SCMD_RD                    "?"
 #define _SCMD_SAVE                  "save"
 
-#define _NUM_OF_CMD                 8
+#define _NUM_OF_CMD                 9
 #define _NUM_OF_SETCLEAR_SCMD       2
 
 #if MICRORL_CFG_USE_ECHO_OFF
@@ -91,6 +93,7 @@ console_error_t console_error;
 console_t console;
 
 bool esp8266_update;
+
 
 /******************************************************************************/
 /* Private function prototypes ---------------------------------------------- */
@@ -228,6 +231,12 @@ int ConsoleExecute(microrl_t *microrl_ptr, int argc, const char * const *argv) {
       PrintfConsoleCRLF("\tChoose your action with calendar: ");
       prvConsolePrintCalendar();
       microrl_set_execute_callback(microrl_ptr, ConsoleCalendar);
+    }
+    else if (strcmp(argv[i], _CMD_WIFI) == CONSOLE_MATCH)
+    {
+      prvConsoleClearScreen();
+      PrintfConsoleCRLF("\tSTARTING WIFI");
+      WiFiInit();
     }
     else
     {
@@ -568,6 +577,7 @@ void ConsolePrintHelp(void)
   PrintfConsoleCRLF("\tclear               - clear screen");
   PrintfConsoleCRLF("\tlogout              - end session");
   PrintfConsoleCRLF("\tcalendar            - calendar config menu");
+  PrintfConsoleCRLF("\twifi                - start wifi");
 
 #if MICRORL_CFG_USE_COMPLETE
   PrintfConsoleCRLF("Use TAB key for completion");
