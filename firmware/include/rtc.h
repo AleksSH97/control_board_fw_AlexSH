@@ -69,8 +69,8 @@ extern "C" {
 #define RTC_REGS_SRAM_LENGTH       (0xFF - 0x14)
 #define RTC_REGS_SRAM_END          (0xFF)
 
-#define ADDR_WORD          (true)
-#define ADDR_BYTE          (false)
+#define ADDR_WORD                  (true)
+#define ADDR_BYTE                  (false)
 
 #define RTC_DATE_BUF_SIZE          (11u)
 #define RTC_TIME_BUF_SIZE          (8u)
@@ -163,6 +163,7 @@ uint8_t RtcSetStatus(RTC_STATUS_t status);
 RTC_STATUS_t RtcGetStatus(void);
 uint8_t RtcSetError(RTC_ERROR_t error);
 RTC_ERROR_t RtcGetError(void);
+
 
 /******************************************************************************/
 

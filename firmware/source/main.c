@@ -30,14 +30,13 @@
 #include "tim.h"
 #include "led.h"
 #include "indication.h"
-
+#include "wi-fi.h"
+#include "rtc_i2c.h"
 #include "log.h"
 
 #include "lwprintf/lwprintf.h"
 #include "console.h"
 #include "lwrb.h"
-
-#include "rtc_i2c.h"
 
 #include "cmsis_os.h"
 #include "cmsis_os2.h"
