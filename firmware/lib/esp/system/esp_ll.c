@@ -240,13 +240,13 @@ send_data(const void* data, size_t len) {
 //        Printf_LogCONT("%c", buf[i]);
 //      Printf_LogCRLF(""CLR_DEF);
 //    }
-    osMutexWait(esptxMutexHandle, osWaitForever);
-    osMutexWait(dma174_MutexHandle, osWaitForever);
+    osMutexAcquire(esptxMutexHandle, osWaitForever);
+    osMutexAcquire(dma174_MutexHandle, osWaitForever);
     DMA_ConfigTxUART5(buf, len);
     LL_USART_EnableDMAReq_TX(UART5);
     LL_DMA_EnableIT_TC(DMA1, LL_DMA_STREAM_7);
     LL_DMA_EnableStream(DMA1, LL_DMA_STREAM_7);
-    osSemaphoreWait(esptxSemaphoreHandle, osWaitForever);
+    osSemaphoreAcquire(esptxSemaphoreHandle, osWaitForever);
     osMutexRelease(dma174_MutexHandle);
     osMutexRelease(esptxMutexHandle);
     return len;
