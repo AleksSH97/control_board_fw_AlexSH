@@ -34,9 +34,6 @@
 #define WIFI_MAX_JOIN_ERRORS         (2u)
 #define WIFI_MAX_NET_CHECK_ERRORS    (10u)
 
-#define WIFI_MODE_AP                 (true)
-#define WIFI_MODE_ST                 (false)
-
 #define WIFI_RF_CHANNEL              (9u)
 
 #define WIFI_NOT_HIDE                (0u)
@@ -111,13 +108,14 @@ uint8_t prvWiFiBindConnection(esp_netconn_p netconnection_server, uint16_t port)
 uint8_t prvWiFiListenConnection(esp_netconn_p netconnection_server);
 uint8_t prvWiFiAcceptConnection(esp_netconn_p netconnection_server, esp_netconn_p *netconnection_client);
 uint8_t prvWiFiReceiveConnection(esp_netconn_p netconnection_client, esp_pbuf_p* pbuf);
+uint8_t prvWiFiCloseConnection(esp_conn_p connection, const uint32_t blocking);
 
 void prvWiFiStationList(esp_sta_t *stations, size_t stations_quantity);
 void prvWiFiSetReceiveTimeout(esp_netconn_p netconnection_client, uint32_t timeout);
 void prvWiFiConcatenatePacketBuffers(esp_pbuf_p head, const esp_pbuf_p tail);
 void prvWiFiFreePacketBuffer(esp_pbuf_p packet_buffer);
-void prvWiFiConnectionClose(esp_netconn_p netconnection_client);
-void prvWiFiConnectionDelete(esp_netconn_p netconnection_client);
+void prvWiFiNetConnectionClose(esp_netconn_p netconnection_client);
+void prvWiFiNetConnectionDelete(esp_netconn_p netconnection_client);
 
 
 /******************************************************************************/
@@ -157,7 +155,7 @@ void WiFiInit(void)
  * @param  mode_ap: 'true' value starts wifi module in AP mode
  * @retval uint8_t: Current error instance
  */
-WIFI_ERROR_t WiFiStart(bool mode_ap)
+uint8_t WiFiStart(bool mode_ap)
 {
   PrintfConsoleCRLF(CLR_DEF"WI-FI START"CLR_DEF);
 
@@ -333,8 +331,8 @@ void WiFiApTask(void *argument)
 
       if (wifi.netconnection_client)
       {
-        prvWiFiConnectionClose(wifi.netconnection_client);
-        prvWiFiConnectionDelete(wifi.netconnection_client);
+        prvWiFiNetConnectionClose(wifi.netconnection_client);
+        prvWiFiNetConnectionDelete(wifi.netconnection_client);
         wifi.netconnection_client = NULL;
       }
       if (wifi.packet_buffer != NULL)
@@ -556,6 +554,70 @@ void WiFiErrorHandler(WIFI_ERROR_t error)
       break;
     }
   }
+}
+/******************************************************************************/
+
+
+
+/**
+ * @brief          Wi-Fi stops task
+ * @retval         NONE
+ */
+void WiFiStop(void)
+{
+  osThreadId_t st_task = WiFiStTaskHandle;
+  osThreadId_t ap_task = WiFiApTaskHandle;
+
+  if (st_task || ap_task)
+  {
+    osKernelLock();
+
+    if (WiFiStTaskHandle != NULL)
+    {
+      WiFiStTaskHandle = NULL;
+      osThreadTerminate(st_task);
+    }
+    if (WiFiApTaskHandle != NULL)
+    {
+      WiFiApTaskHandle = NULL;
+      osThreadTerminate(ap_task);
+    }
+
+    osKernelUnlock();
+  }
+
+  if (wifi.packet_buffer)
+  {
+    prvWiFiFreePacketBuffer(wifi.packet_buffer);
+    wifi.packet_buffer = NULL;
+  }
+  if (wifi.netconnection_client)
+  {
+    prvWiFiNetConnectionClose(wifi.netconnection_client);
+    prvWiFiNetConnectionDelete(wifi.netconnection_client);
+    wifi.netconnection_client = NULL;
+  }
+  if (wifi.netconnection_server)
+  {
+    prvWiFiNetConnectionClose(wifi.netconnection_server);
+    prvWiFiNetConnectionDelete(wifi.netconnection_server);
+    wifi.netconnection_server = NULL;
+  }
+  if (wifi.connection)
+  {
+    uint8_t res = WIFI_OK;
+    res = prvWiFiCloseConnection(wifi.connection, WIFI_BLOCKING);
+
+    if (res != espOK)
+      WiFiSetError(WIFI_CLOSE_CONNECTION_ERROR);
+  }
+
+  wifi.restart = false;
+  wifi.ap_ready = false;
+  wifi.sta_ready = false;
+  wifi.host_connected = false;
+
+  IndicationLedError();
 }
 /******************************************************************************/
 
@@ -839,8 +901,8 @@ uint8_t prvWiFiConnectionNew(WIFI_DATA_t *wifi)
     PrintfConsoleCRLF(CLR_RD"Cannot create netconn_server NETCONN"CLR_DEF);
     if (wifi->netconnection_server)
     {
-      prvWiFiConnectionClose(wifi->netconnection_server);
-      prvWiFiConnectionDelete(wifi->netconnection_server);
+      prvWiFiNetConnectionClose(wifi->netconnection_server);
+      prvWiFiNetConnectionDelete(wifi->netconnection_server);
     }
     return espERRCONNFAIL;
   }
@@ -958,6 +1020,25 @@ uint8_t prvWiFiReceiveConnection(esp_netconn_p netconnection_client, esp_pbuf_p*
 
 
 /**
+ * @brief          Wi-Fi connection close
+ * @return         Current espr_t struct state
+ */
+uint8_t prvWiFiCloseConnection(esp_conn_p connection, const uint32_t blocking)
+{
+  uint8_t res = espOK;
+
+  res = esp_conn_close(connection, blocking);
+
+  PrintfConsoleCRLF(CLR_DEF"Connection close (%s)"CLR_DEF, prvESPErrorHandler(res));
+
+  return res;
+}
+/******************************************************************************/
+
+
+
+
+/**
  * @brief          Wi-Fi concatenate 2 packet buffers together to one big packet
  * @return         NONE
  */
@@ -975,7 +1056,7 @@ void prvWiFiConcatenatePacketBuffers(esp_pbuf_p head, const esp_pbuf_p tail)
  * @brief          Wi-Fi close netconn connection
  * @return         NONE
  */
-void prvWiFiConnectionClose(esp_netconn_p netconnection_client)
+void prvWiFiNetConnectionClose(esp_netconn_p netconnection_client)
 {
   esp_netconn_close(netconnection_client);
   PrintfConsoleCRLF(CLR_DEF"Closed netconnection");
@@ -989,7 +1070,7 @@ void prvWiFiConnectionClose(esp_netconn_p netconnection_client)
  * @brief          Wi-Fi delete netconn connection
  * @return         NONE
  */
-void prvWiFiConnectionDelete(esp_netconn_p netconnection_client)
+void prvWiFiNetConnectionDelete(esp_netconn_p netconnection_client)
 {
   esp_netconn_delete(netconnection_client);
   PrintfConsoleCRLF(CLR_DEF"Deleted netconnection");
