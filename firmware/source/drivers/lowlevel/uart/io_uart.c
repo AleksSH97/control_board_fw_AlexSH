@@ -71,6 +71,24 @@ void IoUartInit(void)
 
 
 /**
+ * @brief          I/O uart init
+ * @param[in]      byte: byte to transfer
+ * @return         NONE
+ */
+void IoUartPutByte(uint8_t byte)
+{
+  if (!esp8266_update)
+  {
+    while (!LL_USART_IsActiveFlag_TXE(IOUART_Periph));
+    LL_USART_TransmitData8(IOUART_Periph, byte);
+  }
+}
+/******************************************************************************/
+
+
+
+
+/**
  * @brief          IOUART_Periph IRQ handler
  */
 void UART4_IRQHandler(void)
