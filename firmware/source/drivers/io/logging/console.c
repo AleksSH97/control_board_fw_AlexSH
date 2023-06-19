@@ -14,6 +14,10 @@
 /******************************************************************************/
 #include "console.h"
 
+#include "esp/system/esp_ll.h"
+#include "esp/esp_sta.h"
+#include "esp/esp_private.h"
+
 
 /******************************************************************************/
 /* Private defines ---------------------------------------------------------- */
@@ -105,6 +109,7 @@ static void prvConsolePrint(microrl_t *microrl_ptr, const char *str);
 void prvConsolePrintCalendar(void);
 void prvConsoleSetHelp(void (*fn)(void));
 void prvConsoleError(void);
+void prvConsolePrintWiFi(void);
 
 
 /******************************************************************************/
@@ -234,9 +239,9 @@ int ConsoleExecute(microrl_t *microrl_ptr, int argc, const char * const *argv) {
     }
     else if (strcmp(argv[i], _CMD_WIFI) == CONSOLE_MATCH)
     {
-      prvConsoleClearScreen();
-      PrintfConsoleCRLF("\tSTARTING WIFI");
-      WiFiInit();
+      PrintfConsoleCRLF("\tChoose your action with wi-fi: ");
+      prvConsolePrintWiFi();
+      microrl_set_execute_callback(microrl_ptr, ConsoleWiFi);
     }
     else
     {
@@ -401,6 +406,61 @@ int ConsoleCalendar(microrl_t *microrl_ptr, int argc, const char * const *argv)
           }
         }
       }
+    }
+    else if (strcmp(argv[i], _CMD_BACK) == CONSOLE_MATCH)
+    {
+      prvConsoleBack();
+    }
+    else
+    {
+      prvConsoleError();
+    }
+    i++;
+  }
+
+  return CONSOLE_OK;
+}
+/******************************************************************************/
+
+
+
+
+/**
+ * @brief           WIFI menu for console
+ * @param[in]       @ref microrl_ptr pointer
+ * @param[in]       argc: shows how many arguments were entered on the command line
+ * @param[in]       argv: vector of string, it's elements are symbols
+ * @return          return 0 if everything is ok
+ */
+int ConsoleWiFi(microrl_t *microrl_ptr, int argc, const char * const *argv)
+{
+  int i = 0;
+  uint8_t res = 0x00;
+  prvConsoleSetHelp(prvConsolePrintWiFi);
+
+  while (i < argc)
+  {
+    if (strcmp(argv[i], "update") == CONSOLE_MATCH)
+    {
+        prvConsoleClearScreen();
+        PrintfConsoleCRLF("\tUPDATING WIFI");
+        WiFiStop();
+        res = WiFiStart(WIFI_MODE_ST);
+
+        if (res != espOK)
+          PrintfConsoleCRLF("ERROR: START WI-FI");
+
+        esp_ll_deinit(NULL);
+        configure_uart(esp.ll.uart.baudrate);
+        //TODO PREPARE FOR ESP UPDATE IO UART
+        esp8266_update = true;
+
+    }
+    else if (strcmp(argv[i], "init") == CONSOLE_MATCH)
+    {
+      prvConsoleClearScreen();
+      PrintfConsoleCRLF("\tINIT WIFI");
+      WiFiInit();
     }
     else if (strcmp(argv[i], _CMD_BACK) == CONSOLE_MATCH)
     {
@@ -645,6 +705,23 @@ void prvConsolePrintCalendar(void)
   PrintfConsoleCRLF("List of calendar commands:");
   PrintfConsoleCRLF("\tdate               -  set date");
   PrintfConsoleCRLF("\ttime               -  set date");
+  PrintfConsoleCRLF("\tback               -  back to main menu");
+  PrintfConsoleCRLF("");
+}
+/******************************************************************************/
+
+
+
+
+/**
+ * @brief          Print WI-FI menu
+ */
+void prvConsolePrintWiFi(void)
+{
+  PrintfConsoleCRLF("");
+  PrintfConsoleCRLF("List of wi-fi commands:");
+  PrintfConsoleCRLF("\tupdate             -  update ESP");
+  PrintfConsoleCRLF("\tinit               -  init ESP");
   PrintfConsoleCRLF("\tback               -  back to main menu");
   PrintfConsoleCRLF("");
 }
