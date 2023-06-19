@@ -43,8 +43,8 @@ extern "C" {
 /******************************************************************************/
 /* Public defines ----------------------------------------------------------- */
 /******************************************************************************/
-
-
+#define WIFI_MODE_AP                 (true)
+#define WIFI_MODE_ST                 (false)
 
 /******************************************************************************/
 /* Public variables --------------------------------------------------------- */
@@ -61,6 +61,8 @@ typedef enum
   WIFI_JOIN_ST_ERROR,
   WIFI_NET_CHECK_ERROR,
 
+  WIFI_CLOSE_CONNECTION_ERROR,
+
   WIFI_UNKNOWN = 0xFF,
 } WIFI_ERROR_t;
 
@@ -72,6 +74,7 @@ uint8_t WiFiSetError(WIFI_ERROR_t error);
 uint8_t WiFiGetError(void);
 
 void WiFiErrorHandler(WIFI_ERROR_t error);
+void WiFiStop(void);
 
 uint8_t WiFiStart(bool mode_ap);
 void WiFiInit(void);
