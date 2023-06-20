@@ -51,6 +51,31 @@ extern "C" {
 /******************************************************************************/
 extern bool esp8266_update;
 
+typedef void (*help_command_fn)(void);
+
+typedef enum
+{
+  CONSOLE_OK = 0x00,
+  CONSOLE_NO_CMD = 0x01,
+
+  CONSOLE_ERROR = 0x10,
+  CONSOLE_ERROR_UNKNOWN_COMMAND,
+  CONSOLE_ERROR_MAX_ARGS
+} console_error_t;
+
+typedef struct
+{
+  help_command_fn    help_command;
+} console_ctrl_t;
+
+typedef struct
+{
+  console_error_t error;
+  console_ctrl_t fns;
+} console_t;
+
+extern console_t console;
+
 /******************************************************************************/
 /* Public functions --------------------------------------------------------- */
 /******************************************************************************/
@@ -58,12 +83,14 @@ void ConsoleInit(void);
 void ConsoleStart(void);
 char ConsoleGetChar(void);
 void ConsoleClearScreenSetup(void);
+void ConsoleClearScreen(void);
+void ConsoleBack(void);
+void ConsoleError(void);
 
 int ConsoleExecute(microrl_t *microrl_ptr, int argc, const char * const *argv);
 int ConsoleExecuteMain(microrl_t* microrl_ptr, int argc, const char* const *argv);
 int ConsoleBuff(microrl_t *microrl_ptr, int argc, const char * const *argv);
 int ConsoleCalendar(microrl_t *microrl_ptr, int argc, const char * const *argv);
-int ConsoleWiFi(microrl_t *microrl_ptr, int argc, const char * const *argv);
 
 char **ConsoleComplete(int argc, const char * const *argv);
 
@@ -74,6 +101,8 @@ void ConsolePrintHelp(void);
 void ConsolePrintBuff(microrl_t *microrl_ptr);
 void ConsolePrintWelcome(microrl_t *microrl_ptr);
 void ConsoleSigint(microrl_t *microrl_ptr);
+
+void ConsoleSetHelp(void (*fn)(void));
 
 /******************************************************************************/
 

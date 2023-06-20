@@ -14,6 +14,8 @@
 /******************************************************************************/
 #include "console.h"
 
+#include "console_wi-fi.h"
+
 #include "esp/system/esp_ll.h"
 #include "esp/esp_sta.h"
 #include "esp/esp_private.h"
@@ -70,29 +72,6 @@ char *keyword[] = {_CMD_HELP, _CMD_CLEAR, _CMD_LOGIN, _CMD_LOGOUT
 char *read_save_key[] = {_SCMD_RD, _SCMD_SAVE};            // 'read/save' command arguments
 char *compl_word [_NUM_OF_CMD + 1];                        // array for completion
 
-typedef void (*help_command_fn)(void);
-
-typedef enum
-{
-  CONSOLE_OK = 0x00,
-  CONSOLE_NO_CMD = 0x01,
-
-  CONSOLE_ERROR = 0x10,
-  CONSOLE_ERROR_UNKNOWN_COMMAND,
-  CONSOLE_ERROR_MAX_ARGS
-} console_error_t;
-
-typedef struct
-{
-  help_command_fn    help_command;
-} console_ctrl_t;
-
-typedef struct
-{
-  console_error_t error;
-  console_ctrl_t fns;
-} console_t;
-
 console_error_t console_error;
 console_t console;
 
@@ -102,14 +81,9 @@ bool esp8266_update;
 /******************************************************************************/
 /* Private function prototypes ---------------------------------------------- */
 /******************************************************************************/
-void prvConsoleClearScreen(void);
-void prvConsoleBack(void);
 void prvConsoleClearScreenSimple(microrl_t *microrl_ptr);
 static void prvConsolePrint(microrl_t *microrl_ptr, const char *str);
 void prvConsolePrintCalendar(void);
-void prvConsoleSetHelp(void (*fn)(void));
-void prvConsoleError(void);
-void prvConsolePrintWiFi(void);
 
 
 /******************************************************************************/
@@ -122,7 +96,7 @@ void ConsoleInit(void)
 {
   microrl_init(microrl_ptr, prvConsolePrint, ConsoleExecute);
 
-  prvConsoleSetHelp(ConsolePrintHelp);
+  ConsoleSetHelp(ConsolePrintHelp);
 
 #if MICRORL_CFG_USE_COMPLETE
   /* Set callback for auto-completion */
@@ -211,7 +185,7 @@ int ConsoleExecuteMain(microrl_t* microrl_ptr, int argc, const char* const *argv
 int ConsoleExecute(microrl_t *microrl_ptr, int argc, const char * const *argv) {
 #endif /* MICRORL_CFG_USE_ECHO_OFF || __DOXYGEN__ */
   int i = 0;
-  prvConsoleSetHelp(ConsolePrintHelp);
+  ConsoleSetHelp(ConsolePrintHelp);
 
   while (i < argc)
   {
@@ -221,11 +195,11 @@ int ConsoleExecute(microrl_t *microrl_ptr, int argc, const char * const *argv) {
     }
     else if (strcmp(argv[i], _CMD_CLEAR) == CONSOLE_MATCH)
     {
-      prvConsoleClearScreen();
+      ConsoleClearScreen();
     }
     else if (strcmp(argv[i], _CMD_LOGOUT) == CONSOLE_MATCH)
     {
-      prvConsoleClearScreen();
+      ConsoleClearScreen();
       IoSystemClearRxQueue();
       LogClearQueues();
       microrl_set_execute_callback(microrl_ptr, ConsoleExecute);
@@ -240,12 +214,12 @@ int ConsoleExecute(microrl_t *microrl_ptr, int argc, const char * const *argv) {
     else if (strcmp(argv[i], _CMD_WIFI) == CONSOLE_MATCH)
     {
       PrintfConsoleCRLF("\tChoose your action with wi-fi: ");
-      prvConsolePrintWiFi();
+      Console_WIFiPrintMenu();
       microrl_set_execute_callback(microrl_ptr, ConsoleWiFi);
     }
     else
     {
-      prvConsoleError();
+      ConsoleError();
     }
     i++;
   }
@@ -341,7 +315,7 @@ int ConsoleCalendar(microrl_t *microrl_ptr, int argc, const char * const *argv)
 {
   int i = 0;
   uint8_t res = 0x00;
-  prvConsoleSetHelp(prvConsolePrintCalendar);
+  ConsoleSetHelp(prvConsolePrintCalendar);
 
   while (i < argc)
   {
@@ -409,66 +383,11 @@ int ConsoleCalendar(microrl_t *microrl_ptr, int argc, const char * const *argv)
     }
     else if (strcmp(argv[i], _CMD_BACK) == CONSOLE_MATCH)
     {
-      prvConsoleBack();
+      ConsoleBack();
     }
     else
     {
-      prvConsoleError();
-    }
-    i++;
-  }
-
-  return CONSOLE_OK;
-}
-/******************************************************************************/
-
-
-
-
-/**
- * @brief           WIFI menu for console
- * @param[in]       @ref microrl_ptr pointer
- * @param[in]       argc: shows how many arguments were entered on the command line
- * @param[in]       argv: vector of string, it's elements are symbols
- * @return          return 0 if everything is ok
- */
-int ConsoleWiFi(microrl_t *microrl_ptr, int argc, const char * const *argv)
-{
-  int i = 0;
-  uint8_t res = 0x00;
-  prvConsoleSetHelp(prvConsolePrintWiFi);
-
-  while (i < argc)
-  {
-    if (strcmp(argv[i], "update") == CONSOLE_MATCH)
-    {
-        prvConsoleClearScreen();
-        PrintfConsoleCRLF("\tUPDATING WIFI");
-        WiFiStop();
-        res = WiFiStart(WIFI_MODE_ST);
-
-        if (res != espOK)
-          PrintfConsoleCRLF("ERROR: START WI-FI");
-
-        esp_ll_deinit(NULL);
-        configure_uart(esp.ll.uart.baudrate);
-        //TODO PREPARE FOR ESP UPDATE IO UART
-        esp8266_update = true;
-
-    }
-    else if (strcmp(argv[i], "init") == CONSOLE_MATCH)
-    {
-      prvConsoleClearScreen();
-      PrintfConsoleCRLF("\tINIT WIFI");
-      WiFiInit();
-    }
-    else if (strcmp(argv[i], _CMD_BACK) == CONSOLE_MATCH)
-    {
-      prvConsoleBack();
-    }
-    else
-    {
-      prvConsoleError();
+      ConsoleError();
     }
     i++;
   }
@@ -495,7 +414,7 @@ void ConsoleClearScreenSetup(void)
 /**
  * @brief           Clear console screen fn
  */
-void prvConsoleClearScreen(void)
+void ConsoleClearScreen(void)
 {
   PrintfConsoleCRLF("\033[2J");
   PrintfConsoleCRLF("\033[H");
@@ -520,12 +439,12 @@ void prvConsoleClearScreenSimple(microrl_t *microrl_ptr)
 /**
  * @brief           Back to main menu command
  */
-void prvConsoleBack(void)
+void ConsoleBack(void)
 {
   PrintfConsoleCRLF("\tBACK TO MAIN MENU"CLR_DEF);
   PrintfConsoleCRLF("");
   PrintfConsoleCRLF("");
-  prvConsoleSetHelp(ConsolePrintHelp);
+  ConsoleSetHelp(ConsolePrintHelp);
   console.fns.help_command();
   microrl_set_execute_callback(microrl_ptr, ConsoleExecuteMain);
 }
@@ -537,7 +456,7 @@ void prvConsoleBack(void)
 /**
  * @brief           Console error message
  */
-void prvConsoleError(void)
+void ConsoleError(void)
 {
   PrintfConsoleCRLF("\tUndefined command");
   IndicationLedRed();
@@ -555,7 +474,7 @@ void prvConsoleError(void)
  */
 void ConsoleSigint(microrl_t *microrl_ptr)
 {
-  prvConsoleClearScreen();
+  ConsoleClearScreen();
 }
 /******************************************************************************/
 
@@ -714,26 +633,9 @@ void prvConsolePrintCalendar(void)
 
 
 /**
- * @brief          Print WI-FI menu
- */
-void prvConsolePrintWiFi(void)
-{
-  PrintfConsoleCRLF("");
-  PrintfConsoleCRLF("List of wi-fi commands:");
-  PrintfConsoleCRLF("\tupdate             -  update ESP");
-  PrintfConsoleCRLF("\tinit               -  init ESP");
-  PrintfConsoleCRLF("\tback               -  back to main menu");
-  PrintfConsoleCRLF("");
-}
-/******************************************************************************/
-
-
-
-
-/**
  * @brief          Set help print function
  */
-void prvConsoleSetHelp(void (*fn)(void))
+void ConsoleSetHelp(void (*fn)(void))
 {
   console.fns.help_command = fn;
 }
