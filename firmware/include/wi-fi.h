@@ -75,6 +75,8 @@ uint8_t WiFiGetError(void);
 
 void WiFiErrorHandler(WIFI_ERROR_t error);
 void WiFiStop(void);
+void WiFiGetMac(void);
+uint8_t WiFiGetInfoAp(void);
 
 uint8_t WiFiStart(bool mode_ap);
 void WiFiInit(void);
