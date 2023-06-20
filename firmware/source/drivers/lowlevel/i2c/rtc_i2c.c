@@ -753,25 +753,25 @@ void I2C1_ER_IRQHandler(void)
 {
   if (LL_I2C_IsActiveFlag_AF(I2C1))
   {
-    IndicationLedError();
+    IndicationLedRed();
     LL_I2C_ClearFlag_AF(I2C1);
     osSemaphoreRelease(RtcI2cSemphoreHandle);
   }
   if (LL_I2C_IsActiveFlag_BERR(I2C1))
   {
-    IndicationLedError();
+    IndicationLedRed();
     LL_I2C_ClearFlag_BERR(I2C1);
     osSemaphoreRelease(RtcI2cSemphoreHandle);
   }
   if (LL_I2C_IsActiveFlag_ARLO(I2C1))
   {
-    IndicationLedError();
+    IndicationLedRed();
     LL_I2C_ClearFlag_ARLO(I2C1);
     osSemaphoreRelease(RtcI2cSemphoreHandle);
   }
   if (LL_I2C_IsActiveFlag_OVR(I2C1))
   {
-    IndicationLedError();
+    IndicationLedRed();
     LL_I2C_ClearFlag_OVR(I2C1);
     osSemaphoreRelease(RtcI2cSemphoreHandle);
   }

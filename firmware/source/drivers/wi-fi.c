@@ -179,7 +179,7 @@ uint8_t WiFiStart(bool mode_ap)
       wifi.ap_mode ? CLR_YL"AP"CLR_GR : CLR_YL"ST"CLR_GR);
 
   if (wifi.ap_mode)
-    IndicationLedError();
+    IndicationLedRed();
   else
     IndicationLedYellow();
 
@@ -617,7 +617,7 @@ void WiFiStop(void)
   wifi.sta_ready = false;
   wifi.host_connected = false;
 
-  IndicationLedError();
+  IndicationLedRed();
 }
 /******************************************************************************/
 
