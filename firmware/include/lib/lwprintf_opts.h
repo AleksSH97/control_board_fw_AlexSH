@@ -39,7 +39,7 @@
  * copy & replace here settings you want to change values
  */
 
-#define LWPRINTF_CFG_OS                       1
+#define LWPRINTF_CFG_OS                       0
 #define LWPRINTF_CFG_OS_MUTEX_HANDLE          void*
 #define LWPRINTF_CFG_OS_MANUAL_PROTECT        0
 
@@ -47,11 +47,11 @@
 #define LWPRINTF_CFG_SUPPORT_TYPE_INT         1
 #define LWPRINTF_CFG_SUPPORT_TYPE_POINTER     0
 
-#define LWPRINTF_CFG_SUPPORT_TYPE_FLOAT       0
+#define LWPRINTF_CFG_SUPPORT_TYPE_FLOAT       1
 #define LWPRINTF_CFG_FLOAT_DEFAULT_PRECISION  6
 #define LWPRINTF_CFG_SUPPORT_TYPE_ENGINEERING 0
 
 #define LWPRINTF_CFG_SUPPORT_TYPE_STRING      1
-#define LWPRINTF_CFG_SUPPORT_TYPE_BYTE_ARRAY  0
+#define LWPRINTF_CFG_SUPPORT_TYPE_BYTE_ARRAY  1
 
 #endif /* LWPRINTF_HDR_OPTS_H */
