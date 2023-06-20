@@ -17,15 +17,11 @@
 #include "lwprintf/lwprintf.h"
 
 
-
-
 /******************************************************************************/
 /* Private defines ---------------------------------------------------------- */
 /******************************************************************************/
 #define LOGS_QUEUE_SIZE            (512U)
 #define CONSOLE_QUEUE_SIZE         (512U)
-
-
 
 
 /******************************************************************************/
@@ -34,7 +30,7 @@
 osMessageQueueId_t consoleQueueHandle;
 osMessageQueueId_t logsQueueHandle;
 
-static lwprintf_t console;
+static lwprintf_t console_print;
 static lwprintf_t logs;
 
 const osMessageQueueAttr_t consoleQueueAttributes = {
@@ -46,17 +42,14 @@ const osMessageQueueAttr_t logsQueueAttributes = {
 };
 
 
-
-
 /******************************************************************************/
 /* Private function prototypes ---------------------------------------------- */
 /******************************************************************************/
 static int prvLwprintfLogsOut(int ch, lwprintf_t* p);
 static int prvLwprintfConsoleOut(int ch, lwprintf_t* p);
 
+
 /******************************************************************************/
-
-
 
 
 /**
@@ -67,7 +60,7 @@ void LogInit(void)
   consoleQueueHandle = osMessageQueueNew(512, sizeof(uint8_t), &consoleQueueAttributes);
   logsQueueHandle = osMessageQueueNew(512, sizeof(uint8_t), &logsQueueAttributes);
 
-  lwprintf_init_ex(&console, prvLwprintfConsoleOut);
+  lwprintf_init_ex(&console_print, prvLwprintfConsoleOut);
   lwprintf_init_ex(&logs, prvLwprintfLogsOut);
 }
 /******************************************************************************/
@@ -93,9 +86,8 @@ void LogClearQueues(void)
  */
 int PrintfLogs(const char *fmt, ...)
 {
-  if (IoSystemGetMode() != IO_LOGS) {
+  if (IoSystemGetMode() != IO_LOGS)
     return 0;
-  }
 
   va_list args;
   int len;
@@ -116,15 +108,11 @@ int PrintfLogs(const char *fmt, ...)
  */
 int PrintfConsole(const char *fmt, ...)
 {
-  if (IoSystemGetMode() != IO_CONSOLE) {
-    return 0;
-  }
-
   va_list args;
   int len;
 
   va_start(args, fmt);
-  len = lwprintf_vprintf_ex(&console, fmt, args);
+  len = lwprintf_vprintf_ex(&console_print, fmt, args);
   va_end(args);
 
   return (len);
@@ -145,7 +133,8 @@ static int prvLwprintfLogsOut(int ch, lwprintf_t* p)
     return ch;           //to prevent printing '0' in the end of any (char*)
   }
 
-  osMessageQueuePut(logsQueueHandle, &ch, 0, 100);
+  if(osMessageQueuePut(logsQueueHandle, &ch, 0, 100) != osOK)
+    return 0;
 
   return (ch);
 }
@@ -165,7 +154,8 @@ static int prvLwprintfConsoleOut(int ch, lwprintf_t* p)
     return ch;           //to prevent printing '0' in the end of any (char*)
   }
 
-  osMessageQueuePut(consoleQueueHandle, &ch, 0, 100);
+  if(osMessageQueuePut(consoleQueueHandle, &ch, 0, 100) != osOK)
+    return 0;
 
   return (ch);
 }
@@ -184,6 +174,19 @@ void LogPrintErrorMsg(void)
   PrintfLogsCRLF(CLR_RD "ERROR INIT UART");
   PrintfLogsCRLF(CLR_DEF"");
   PrintfLogsCRLF("");
+}
+/******************************************************************************/
+
+
+
+
+/**
+ * @brief          Clear screen logs
+ */
+void LogClearScreen(void)
+{
+  PrintfLogsCRLF("\033[2J");
+  PrintfLogsCRLF("\033[H");
 }
 /******************************************************************************/
 

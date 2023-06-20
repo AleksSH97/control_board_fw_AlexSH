@@ -76,6 +76,7 @@ extern osMessageQueueId_t logsQueueHandle;
 /******************************************************************************/
 void LogsTaskStart(void *argument);
 void LogClearQueues(void);
+void LogClearScreen(void);
 
 void LogInit(void);
 
