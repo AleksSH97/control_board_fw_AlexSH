@@ -617,7 +617,50 @@ void WiFiStop(void)
   wifi.sta_ready = false;
   wifi.host_connected = false;
 
-  IndicationLedRed();
+  IndicationLedGreenBlink(5);
+}
+/******************************************************************************/
+
+
+
+
+/**
+ * @brief          Wi-Fi get MAC address
+ * @return         NONE
+ */
+void WiFiGetMac(void)
+{
+  esp_mac_t mac_addr = {0};
+  esp_sta_getmac(&mac_addr, 0, NULL, NULL, 1);
+  PrintfConsoleCRLF("\t"CLR_YL"ESP8266 MAC %02X:%02X:%02X:%02X:%02X:%02X"CLR_DEF, mac_addr.mac[0], mac_addr.mac[1],
+                                                                                 mac_addr.mac[2], mac_addr.mac[3],
+                                                                                 mac_addr.mac[4], mac_addr.mac[5]);
+}
+/******************************************************************************/
+
+
+
+
+/**
+ * @brief          Get current access point information
+ * @return         Current espr_t struct state
+ */
+uint8_t WiFiGetInfoAp(void)
+{
+  uint8_t res = espOK;
+
+  esp_sta_info_ap_t ap_info = {0};
+  res = esp_sta_get_ap_info(&ap_info, NULL, NULL, WIFI_BLOCKING);
+
+  if (res != espOK)
+  {
+    PrintfConsoleCRLF("\t"CLR_YL"ESP8266 is not connected to AP"CLR_DEF);
+    return res;
+  }
+
+  PrintfConsoleCRLF("\t"CLR_YL"ESP8266 AP \"%s\" RSSI %d dB"CLR_DEF, ap_info.ssid, ap_info.rssi);
+
+  return res;
 }
 /******************************************************************************/
 
