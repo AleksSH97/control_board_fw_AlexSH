@@ -98,7 +98,7 @@ void IndicationLedGreen(void);
 
 void IndicationLedLoading(void);
 
-void IndicationLedError(void);
+void IndicationLedRed(void);
 
 void IndicationLedButton(void);
 void IndicationLedReady(void);
