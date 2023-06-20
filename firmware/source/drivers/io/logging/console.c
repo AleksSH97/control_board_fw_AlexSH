@@ -284,7 +284,7 @@ int ConsoleExecute(microrl_t *microrl_ptr, int argc, const char * const *argv)
         else
         {
           PrintfConsoleCRLF("\tLogin name doesn't registered. Try again.");
-          IndicationLedError();
+          IndicationLedRed();
           return CONSOLE_ERROR;
         }
       }
@@ -308,7 +308,7 @@ int ConsoleExecute(microrl_t *microrl_ptr, int argc, const char * const *argv)
       else
       {
         PrintfConsoleCRLF("\tWrong password. Try again.");
-        IndicationLedError();
+        IndicationLedRed();
         passw_in = 0;
         return CONSOLE_ERROR;
       }
@@ -317,7 +317,7 @@ int ConsoleExecute(microrl_t *microrl_ptr, int argc, const char * const *argv)
     {
         PrintfConsoleCRLF("\tYou need to login first!");
         PrintfConsoleCRLF("\tlogin YOUR_LOGIN");
-        IndicationLedError();
+        IndicationLedRed();
         return CONSOLE_ERROR;
     }
     i++;
@@ -540,7 +540,7 @@ void prvConsoleBack(void)
 void prvConsoleError(void)
 {
   PrintfConsoleCRLF("\tUndefined command");
-  IndicationLedError();
+  IndicationLedRed();
   console.fns.help_command();
 }
 /******************************************************************************/
