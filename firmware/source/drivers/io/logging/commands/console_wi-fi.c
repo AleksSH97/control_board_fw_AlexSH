@@ -1,8 +1,8 @@
 /**
  ******************************************************************************
- * @file           : console.c
+ * @file           : console_wi-fi.c
  * @author         : Aleksandr Shabalin       <alexnv97@gmail.com>
- * @brief          : Console system
+ * @brief          : Console system for wi-fi commands
  ******************************************************************************
  * ----------------- Copyright (c) 2023 Aleksandr Shabalin------------------- *
  ******************************************************************************
@@ -76,6 +76,16 @@ int ConsoleWiFi(microrl_t *microrl_ptr, int argc, const char * const *argv)
       PrintfConsoleCRLF("\tINIT WIFI");
       WiFiInit();
     }
+    else if (strcmp(argv[i], "version") == CONSOLE_MATCH)
+    {
+      PrintfConsoleCRLF("\t"CLR_YL"ESP8266 AT  v%u.%u.%u"CLR_DEF, esp.m.version_at.major, esp.m.version_at.minor, esp.m.version_at.patch);
+      PrintfConsoleCRLF("\t"CLR_YL"ESP8266 SDK v%u.%u.%u"CLR_DEF, esp.m.version_sdk.major, esp.m.version_sdk.minor, esp.m.version_sdk.patch);
+      WiFiGetMac();
+      res = WiFiGetInfoAp();
+
+      if (res != espOK)
+        return CONSOLE_OK;
+    }
     else if (strcmp(argv[i], _CMD_BACK) == CONSOLE_MATCH)
     {
       ConsoleBack();
@@ -103,33 +113,9 @@ void Console_WIFiPrintMenu(void)
   PrintfConsoleCRLF("List of wi-fi commands:");
   PrintfConsoleCRLF("\tupdate             -  update ESP");
   PrintfConsoleCRLF("\tinit               -  init ESP");
+  PrintfConsoleCRLF("\tversion            -  check current version");
   PrintfConsoleCRLF("\tback               -  back to main menu");
   PrintfConsoleCRLF("");
 }
 /******************************************************************************/
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
 
