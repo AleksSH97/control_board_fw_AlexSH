@@ -52,7 +52,13 @@ const osMessageQueueAttr_t uartRxQueueAttributes = {
 
 volatile uint8_t esp8266_logs;
 
+typedef struct
+{
+  uint8_t data[32];
+  uint8_t id;
+} IO_SYS_MSG;
 
+IO_SYS_MSG msg;
 /******************************************************************************/
 /* Private function prototypes ---------------------------------------------- */
 /******************************************************************************/
@@ -71,6 +77,8 @@ static void prvIoConsoleRxHandler(char rx);
 void IoSystemInit(void)
 {
   IoSystemSetMode(IO_LOGS);
+
+  esp8266_update = false;
 
   uint8_t init = 0x00;
   uart_ctrl_t fns = {0};
@@ -127,17 +135,18 @@ IOSYS_MODE IoSystemGetMode(void)
 void IoSystemRxTask(void *argument)
 {
   uint8_t rx = 0x00;
+  msg.id = 0U;
 
   LogPrintWelcomeMsg();
 
   for(;;)
   {
-    uint8_t data = 0x00;
+    //msg.data[0] = 0x00;
 
-    if (!(IoSystemReadDataFromRxBuffer(&data)))
+    if (!(IoSystemReadDataFromRxBuffer(msg.data)))
       continue;
 
-    osMessageQueuePut(uartRxQueueHandle, &data, 0, 100);
+    osMessageQueuePut(uartRxQueueHandle, msg.data, 0, 100);
 
     if (!(IoSystemGetByte(&rx, 100)))
       continue;
@@ -235,10 +244,8 @@ void prvIoSystemSetRxHandler(char rx)
     return;
   }
 
-//    if (IoSystemGetMode() == IO_LOGS) {
-//        io_system.rx_handler = io_logs_rx_handler;
-//        return;
-//    }
+//  if (IoSystemGetMode() == IO_LOGS)
+//      return;
 
   IoSystemSetMode(IO_LOGS);
   io_system.rx_handler = prvIoLogsRxHandler;
