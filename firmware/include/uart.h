@@ -51,7 +51,7 @@ extern "C" {
 extern struct uart io_uart;
 
 typedef void (*send_byte_fn)(USART_TypeDef *USARTx, lwrb_t* buff);
-typedef void (*receive_byte_fn)(USART_TypeDef *USARTx, struct uart uart);
+typedef void (*receive_byte_fn)(USART_TypeDef *USARTx, struct uart *uart);
 typedef void (*init_fn)(void);
 
 typedef struct {
