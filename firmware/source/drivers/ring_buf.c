@@ -40,7 +40,7 @@ void RingBuffInit(lwrb_t *lwrb_ptr, uint8_t *buff)
 /**
  * @brief          Ring buffer callback
  */
-void RingBufEvtCallback(struct uart *self, lwrb_evt_type_t evt, size_t bp)
+void RingBufEvtCallback(struct lwrb *self, lwrb_evt_type_t evt, size_t bp)
 {
   switch(evt) {
     case LWRB_EVT_READ:
