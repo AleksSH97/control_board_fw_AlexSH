@@ -34,7 +34,7 @@ extern "C" {
 void RingBuffInit(lwrb_t *lwrb_ptr, uint8_t *buff);
 void RingBufMicrophoneInit(void);
 void RingBufAcceleroInit(void);
-void RingBufEvtCallback(struct uart *self, lwrb_evt_type_t evt, size_t bp);
+void RingBufEvtCallback(struct lwrb *self, lwrb_evt_type_t evt, size_t bp);
 
 
 /******************************************************************************/
