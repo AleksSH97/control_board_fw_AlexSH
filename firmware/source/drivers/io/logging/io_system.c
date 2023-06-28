@@ -14,15 +14,17 @@
 /******************************************************************************/
 #include "io_system.h"
 
-
+#if    !WIFI_USE_LWESP
+#include "esp/system/esp_ll.h"
+#include "esp/esp_sta.h"
+#include "esp/esp_private.h"
+#endif
 
 
 /******************************************************************************/
 /* Private defines ---------------------------------------------------------- */
 /******************************************************************************/
 #define SOFT_TIMEOUT_MS             (1000U)
-
-
 
 
 /******************************************************************************/
@@ -36,13 +38,13 @@ osMessageQueueId_t uartRxQueueHandle;
 
 const osThreadAttr_t RxTask_attributes = {
       .name = "RxTask",
-      .stack_size = 128 * 4,
+      .stack_size = 256 * 4,
       .priority = (osPriority_t) osPriorityNormal,
 };
 
 const osThreadAttr_t TxTask_attributes = {
       .name = "TxTask",
-      .stack_size = 128 * 4,
+      .stack_size = 256 * 4,
       .priority = (osPriority_t) osPriorityNormal,
 };
 
@@ -278,6 +280,34 @@ void prvIoLogsRxHandler(char rx)
     ConsoleStart();
     IndicationLedGreen();
     return;
+  }
+
+  if ((rx == 'x') || (rx == 'X'))
+  {
+    WiFiInit();
+  }
+
+  if ((rx == 'u') || (rx == 'U'))
+  {
+    uint8_t res = 0x00;
+
+    WiFiStop();
+    res = WiFiStart(WIFI_MODE_ST);
+
+    if (res != espOK)
+      PrintfLogsCRLF("ERROR: START WI-FI");
+
+    esp_ll_deinit(NULL);
+    configure_uart(esp.ll.uart.baudrate);
+    esp8266_update = true;
+  }
+
+  if ((rx == 'v') || (rx == 'V'))
+  {
+    PrintfLogsCRLF("\t"CLR_YL"ESP8266 AT  v%u.%u.%u"CLR_DEF, esp.m.version_at.major, esp.m.version_at.minor, esp.m.version_at.patch);
+    PrintfLogsCRLF("\t"CLR_YL"ESP8266 SDK v%u.%u.%u"CLR_DEF, esp.m.version_sdk.major, esp.m.version_sdk.minor, esp.m.version_sdk.patch);
+    WiFiGetMac();
+    WiFiGetInfoAp();
   }
 
   if ((rx == 'L') || (rx == 'l'))
