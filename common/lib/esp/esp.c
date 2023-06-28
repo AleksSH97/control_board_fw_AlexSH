@@ -77,11 +77,10 @@ espr_t
 esp_init(esp_evt_fn evt_func, const uint32_t blocking) {
     espr_t res = espOK;
 
+    memset(&esp, 0x00, sizeof(esp));
     esp.status.f.initialized = 0;               /* Clear possible init flag */
-
     def_evt_link.fn = evt_func != NULL ? evt_func : def_callback;
     esp.evt_func = &def_evt_link;               /* Set callback function */
-
     esp.evt_server = NULL;                      /* Set default server callback function */
 
     if (!esp_sys_init()) {                      /* Init low-level system */
@@ -106,7 +105,12 @@ esp_init(esp_evt_fn evt_func, const uint32_t blocking) {
         goto cleanup;
     }
 
-    /* Create threads */
+    /*
+     * Create threads
+     *
+     * Each thread receives handle of semaphore that must be released inside the thread.
+     * This is to make sure threads start immediately after they are created
+     */
     esp_sys_sem_wait(&esp.sem_sync, 0);         /* Lock semaphore */
     if (!esp_sys_thread_create(&esp.thread_produce, "esp_produce", esp_thread_produce, &esp.sem_sync, ESP_SYS_THREAD_SS, ESP_SYS_THREAD_PRIO)) {
         ESP_DEBUGF(ESP_CFG_DBG_INIT | ESP_DBG_LVL_SEVERE | ESP_DBG_TYPE_TRACE,
