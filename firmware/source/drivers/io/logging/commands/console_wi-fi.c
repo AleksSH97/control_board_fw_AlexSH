@@ -15,10 +15,19 @@
 #include "console_wi-fi.h"
 
 #include "console.h"
+#if    !WIFI_USE_LWESP
 #include "esp/system/esp_ll.h"
 #include "esp/esp_sta.h"
 #include "esp/esp_private.h"
+#endif
 
+#if    WIFI_USE_LWESP
+#include "lwesp/lwesp.h"
+#include "system/lwesp_ll.h"
+#include "lwesp/lwesp_private.h"
+#include "lwesp/lwesp_mem.h"
+#include "lwesp/lwesp_input.h"
+#endif
 
 /******************************************************************************/
 /* Private defines ---------------------------------------------------------- */
@@ -64,7 +73,13 @@ int ConsoleWiFi(microrl_t *microrl_ptr, int argc, const char * const *argv)
         if (res != espOK)
           PrintfConsoleCRLF("ERROR: START WI-FI");
 
+#if    WIFI_USE_LWESP
+        lwesp_ll_deinit(NULL);
+#endif
+
+#if   !WIFI_USE_LWESP
         esp_ll_deinit(NULL);
+#endif
         configure_uart(esp.ll.uart.baudrate);
         //TODO PREPARE FOR ESP UPDATE IO UART
         esp8266_update = true;
