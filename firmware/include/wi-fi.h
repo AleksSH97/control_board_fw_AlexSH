@@ -25,7 +25,6 @@
 #include "FreeRTOS.h"
 #include "task.h"
 #include "cmsis_os.h"
-#include "cmsis_os2.h"
 
 #include "esp/esp.h"
 #include "esp/esp_private.h"
@@ -45,6 +44,14 @@ extern "C" {
 /******************************************************************************/
 #define WIFI_MODE_AP                 (true)
 #define WIFI_MODE_ST                 (false)
+
+#ifndef WIFI_CMSIS_OS2_ENA
+#define WIFI_CMSIS_OS2_ENA           1
+#endif
+
+#ifndef WIFI_USE_LWESP
+#define WIFI_USE_LWESP               0
+#endif
 
 /******************************************************************************/
 /* Public variables --------------------------------------------------------- */
@@ -83,6 +90,13 @@ void WiFiInit(void);
 void WiFiApTask(void *argument);
 void WiFiStTask(void *argument);
 
+#if !WIFI_USE_LWESP
+espr_t esp_callback_function(esp_evt_t* event);
+char *ESPErrorHandler(espr_t error);
+#endif
+
+void TaskWiFiST(void const *argument);
+void TaskWiFiAP(void const *argument);
 
 /******************************************************************************/
 
