@@ -48,8 +48,14 @@
 #define ESP_CFG_MODE_STATION                1
 #define ESP_CFG_MODE_ACCESS_POINT           1
 
+#define ESP_CFG_DBG                         ESP_DBG_OFF
+
+#define ESP_CFG_INPUT_USE_PROCESS           0
+
 #define ESP_CFG_MAX_SSID_LENGTH             32
 #define ESP_CFG_MAX_PWD_LENGTH              32
+
+#define ESP_USE_TX_RX_INTERRUPT             1
 
 #define ESP_CFG_NETCONN                     1
 #define ESP_CFG_PING                        1
