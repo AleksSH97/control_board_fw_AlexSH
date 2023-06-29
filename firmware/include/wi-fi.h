@@ -21,18 +21,9 @@
 /* Includes ----------------------------------------------------------------- */
 /******************************************************************************/
 #include <stdarg.h>
-
-#include "FreeRTOS.h"
-#include "task.h"
-#include "cmsis_os.h"
-
-#include "esp/esp.h"
-#include "esp/esp_private.h"
-#include "esp/esp_parser.h"
-
-#include "log.h"
-#include "io_system.h"
-#include "config.h"
+#include <stdlib.h>
+#include <stdio.h>
+#include <stdbool.h>
 
 #ifdef __cplusplus
 extern "C" {
@@ -80,6 +71,8 @@ typedef enum
 uint8_t WiFiSetError(WIFI_ERROR_t error);
 uint8_t WiFiGetError(void);
 
+uint8_t prvWiFiResetWithDelay(void);
+
 void WiFiErrorHandler(WIFI_ERROR_t error);
 void WiFiStop(void);
 void WiFiGetMac(void);
@@ -90,13 +83,9 @@ void WiFiInit(void);
 void WiFiApTask(void *argument);
 void WiFiStTask(void *argument);
 
-#if !WIFI_USE_LWESP
-espr_t esp_callback_function(esp_evt_t* event);
-char *ESPErrorHandler(espr_t error);
-#endif
-
 void TaskWiFiST(void const *argument);
 void TaskWiFiAP(void const *argument);
+
 
 /******************************************************************************/
 

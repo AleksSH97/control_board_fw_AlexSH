@@ -12,10 +12,19 @@
 /******************************************************************************/
 /* Includes ----------------------------------------------------------------- */
 /******************************************************************************/
-#include <stdlib.h>
-
 #include "wi-fi.h"
 
+#include "esp/esp.h"
+#include "esp/esp_private.h"
+#include "esp/esp_parser.h"
+
+#include "FreeRTOS.h"
+#include "task.h"
+#include "cmsis_os.h"
+
+#include "log.h"
+#include "io_system.h"
+#include "config.h"
 
 /******************************************************************************/
 /* Private defines ---------------------------------------------------------- */
@@ -49,20 +58,40 @@
 /******************************************************************************/
 /* Private variables -------------------------------------------------------- */
 /******************************************************************************/
+#if WIFI_CMSIS_OS2_ENA
 osThreadId_t WiFiApTaskHandle;
 osThreadId_t WiFiStTaskHandle;
 
 const osThreadAttr_t WifiApTask_attributes = {
       .name = "WifiApTask",
-      .stack_size = 128 * 4,
+      .stack_size = 512 * 4,
       .priority = (osPriority_t) osPriorityNormal,
 };
 
 const osThreadAttr_t WifiStTask_attributes = {
       .name = "WifiStTask",
-      .stack_size = 128 * 4,
+      .stack_size = 512 * 4,
       .priority = (osPriority_t) osPriorityNormal,
 };
+#endif /* WIFI_CMSIS_OS2_ENA */
+
+#if !WIFI_CMSIS_OS2_ENA
+osThreadId_t wifiApTaskHandle;
+osThreadId_t wifiStTaskHandle;
+
+osThreadAttr_t wifiApTask_attr = {
+    .name = "wifiApTask",
+    .priority = osPriorityNormal,
+    .stack_size = WIFI_STACK_SIZE,
+};
+
+osThreadAttr_t wifiStTask_attr = {
+    .name = "wifiStTask",
+    .priority = osPriorityNormal,
+    .stack_size = WIFI_STACK_SIZE,
+};
+
+#endif /* !WIFI_CMSIS_OS2_ENA */
 
 typedef struct
 {
@@ -88,10 +117,7 @@ static WIFI_DATA_t wifi;
 /******************************************************************************/
 /* Private function prototypes ---------------------------------------------- */
 /******************************************************************************/
-espr_t esp_callback_function(esp_evt_t* event);
-char *prvESPErrorHandler(espr_t error);
-
-uint8_t prvWiFiResetWithDelay(void);
+//uint8_t prvWiFiResetWithDelay(void);
 uint8_t prvWiFiSetMode(uint8_t mode);
 uint8_t prvWiFiListAp(esp_ap_t *access_point, size_t *access_point_find);
 uint8_t prvWiFiAccessPointsFound(size_t access_point_find, esp_ap_t *access_point, bool *config_ap_found);
@@ -110,6 +136,11 @@ uint8_t prvWiFiAcceptConnection(esp_netconn_p netconnection_server, esp_netconn_
 uint8_t prvWiFiReceiveConnection(esp_netconn_p netconnection_client, esp_pbuf_p* pbuf);
 uint8_t prvWiFiCloseConnection(esp_conn_p connection, const uint32_t blocking);
 
+#if !WIFI_USE_LWESP
+espr_t esp_callback_function(esp_evt_t* event);
+char *ESPErrorHandler(espr_t error);
+#endif
+
 void prvWiFiStationList(esp_sta_t *stations, size_t stations_quantity);
 void prvWiFiSetReceiveTimeout(esp_netconn_p netconnection_client, uint32_t timeout);
 void prvWiFiConcatenatePacketBuffers(esp_pbuf_p head, const esp_pbuf_p tail);
@@ -127,18 +158,26 @@ void prvWiFiNetConnectionDelete(esp_netconn_p netconnection_client);
  */
 void WiFiInit(void)
 {
-  PrintfConsoleCRLF(CLR_RD"WI-FI INIT"CLR_DEF);
+  PrintfLogsCRLF(CLR_RD"WI-FI INIT"CLR_DEF);
 
   uint8_t res = WIFI_OK;
 
   memset(&wifi, 0, sizeof(wifi));
 
   espr_t output = esp_init(esp_callback_function, 0);
-  if (output != espOK)
-    PrintfConsoleCRLF(CLR_RD"ESP init FAIL! (%s)"CLR_DEF, prvESPErrorHandler(output));
 
+  if (output != espOK)
+    PrintfLogsCRLF(CLR_RD"ESP init FAIL! (%s)"CLR_DEF, ESPErrorHandler(output));
+
+#if WIFI_CMSIS_OS2_ENA
   WiFiStTaskHandle = NULL;
   WiFiApTaskHandle = NULL;
+#endif /* WIFI_CMSIS_OS2_ENA */
+
+#if !WIFI_CMSIS_OS2_ENA
+  wifiStTaskHandle = NULL;
+  wifiApTaskHandle = NULL;
+#endif /* !WIFI_CMSIS_OS2_ENA */
 
   res = WiFiStart(WIFI_MODE_ST);
 
@@ -157,10 +196,11 @@ void WiFiInit(void)
  */
 uint8_t WiFiStart(bool mode_ap)
 {
-  PrintfConsoleCRLF(CLR_DEF"WI-FI START"CLR_DEF);
+  PrintfLogsCRLF(CLR_DEF"WI-FI START"CLR_DEF);
 
   wifi.ap_mode = mode_ap;
 
+#if WIFI_CMSIS_OS2_ENA
   if (mode_ap == WIFI_MODE_AP)
   {
     WiFiApTaskHandle = osThreadNew(WiFiApTask, NULL, &WifiApTask_attributes);
@@ -169,13 +209,27 @@ uint8_t WiFiStart(bool mode_ap)
   }
   else if (mode_ap == WIFI_MODE_ST)
   {
-    PrintfConsoleCRLF(CLR_DEF"WI-FI MODE ST"CLR_DEF);
+    PrintfLogsCRLF(CLR_DEF"WI-FI MODE ST"CLR_DEF);
     WiFiStTaskHandle = osThreadNew(WiFiStTask, NULL, &WifiStTask_attributes);
     if (WiFiStTaskHandle == NULL)
       return WIFI_START_ERROR;
   }
+#endif
 
-  PrintfConsoleCRLF("Switch WiFi to %s mode ..."CLR_DEF,
+#if !WIFI_CMSIS_OS2_ENA
+  if (mode_ap == WIFI_MODE_AP)
+  {
+    osThreadDef(wifiApTask, osPriorityNormal, 0, WIFI_STACK_SIZE);
+    wifiApTaskHandle = osThreadCreate(osThread(wifiApTask), NULL);
+  }
+  else if (mode_ap == WIFI_MODE_ST)
+  {
+    osThreadDef(wifiStTask, osPriorityNormal, 0, WIFI_STACK_SIZE);
+    wifiStTaskHandle = osThreadCreate(osThread(wifiStTask), NULL);
+  }
+#endif
+
+  PrintfLogsCRLF("Switch WiFi to %s mode ..."CLR_DEF,
       wifi.ap_mode ? CLR_YL"AP"CLR_GR : CLR_YL"ST"CLR_GR);
 
   if (wifi.ap_mode)
@@ -196,6 +250,7 @@ uint8_t WiFiStart(bool mode_ap)
  * @param  argument: Not used
  * @retval None
  */
+#if WIFI_CMSIS_OS2_ENA
 void WiFiApTask(void *argument)
 {
   while (!wifi.esp_ready)
@@ -249,7 +304,7 @@ void WiFiApTask(void *argument)
     if (res != espOK)
       continue;
 
-    PrintfConsoleCRLF(CLR_GR"WiFi mode is now "CLR_YL"AP"CLR_DEF);
+    PrintfLogsCRLF(CLR_GR"WiFi mode is now "CLR_YL"AP"CLR_DEF);
 
     res = prvWiFiSetIp(&ip, &gw, &nm);
 
@@ -316,7 +371,7 @@ void WiFiApTask(void *argument)
         else if (res != espOK)
           break;
 
-        PrintfConsoleCRLF(CLR_GR"NETCONN data received, %u/%u bytes"CLR_DEF, (int) esp_pbuf_length(packet_buffer, 1), (int) esp_pbuf_length(packet_buffer, 0));
+        PrintfLogsCRLF(CLR_GR"NETCONN data received, %u/%u bytes"CLR_DEF, (int) esp_pbuf_length(packet_buffer, 1), (int) esp_pbuf_length(packet_buffer, 0));
 
         if (wifi.packet_buffer == NULL)
           wifi.packet_buffer = packet_buffer;
@@ -394,7 +449,7 @@ void WiFiStTask(void *argument)
 
     while (!config_ap_found)
     {
-      PrintfConsoleCRLF("WiFi Access points scanning ...");
+      PrintfLogsCRLF("WiFi Access points scanning ...");
       IndicationLedYellowBlink(5);
 
       res = prvWiFiListAp(access_point, &access_point_find);
@@ -418,7 +473,7 @@ void WiFiStTask(void *argument)
 
       errors_scan_ap = 0;
       IndicationLedYellowBlink(2);
-      PrintfConsoleCRLF("WiFi connecting to \"%s\" network ...", config.wifi.ssid);
+      PrintfLogsCRLF("WiFi connecting to \"%s\" network ...", config.wifi.ssid);
 
       //WiFi join as station to access point
       res = prvWiFiStaJoin();
@@ -447,7 +502,7 @@ void WiFiStTask(void *argument)
         continue;
     }
 
-    PrintfConsoleCRLF("Checking \"%s\" for internet connection ...", config.wifi.ssid);
+    PrintfLogsCRLF("Checking \"%s\" for internet connection ...", config.wifi.ssid);
 
     for (;;)
     {
@@ -482,11 +537,11 @@ void WiFiStTask(void *argument)
         IndicationLedYellowBlink(3);
         wifi.sta_ready = true;
 
-        PrintfConsoleCRLF(CLR_GR"Internet connection \"%s\" OK"CLR_DEF, config.wifi.ssid);
+        PrintfLogsCRLF(CLR_GR"Internet connection \"%s\" OK"CLR_DEF, config.wifi.ssid);
 
 //        if (!mqtt_wifi_transport && !esp8266_onair)
 //        {
-//          PrintfConsoleCRLF(CLR_GR"Switching MQTT transport to WiFi"CLR_DEF);
+//          PrintfLogsCRLF(CLR_GR"Switching MQTT transport to WiFi"CLR_DEF);
 //          MQTTClient_Stop();
 //        }
       }
@@ -498,8 +553,345 @@ void WiFiStTask(void *argument)
   osThreadTerminate(NULL);
 }
 /******************************************************************************/
+#endif
 
 
+#if !WIFI_CMSIS_OS2_ENA
+/**
+ * @brief  Function implementing the wifiStTask thread.
+ *         This task drives the esp module in STA mode.
+ * @param  argument: Not used
+ * @retval None
+ */
+void TaskWiFiST(void const *argument)
+{
+  u8 errors_scan_ap   = 0;
+  u8 errors_join_st   = 0;
+  u8 errors_net_check = 0;
+
+  /* Cyclic check that wifi module is ready */
+  while (!wifi.esp_ready)
+    osDelay(100);
+
+  for (;;)
+  {
+    wifi.conn = NULL;
+
+    esp_reset_with_delay(ESP_CFG_RESET_DELAY_DEFAULT, NULL, NULL, 1);
+
+    esp_ap_t aps[10];
+    size_t apf;
+
+    espr_t res = esp_set_wifi_mode(ESP_MODE_STA, 0, NULL, NULL, 1);
+    if (res == espOK)
+    {
+      PrintfLogsCRLF(CLR_GR"WiFi mode is now "CLR_YL"ST"CLR_DEF);
+
+      bool config_ap_found = false;
+      while (!config_ap_found)
+      {
+        PrintfLogsCRLF("WiFi Access points scanning ...");
+        LEDs_Yellow(LED_CTRL_BLINK, 33, 330, 0);
+
+        res = esp_sta_list_ap(NULL, aps, ESP_ARRAYSIZE(aps), &apf, NULL, NULL, 1);
+        if (res == espOK)
+        {
+          PrintfLogsCRLF(CLR_GR"WiFi Access point scan OK"CLR_DEF);
+
+          for (u8 i = 0; i < apf; i++)
+          {
+            PrintfLogsCRLF(CLR_GR"Wifi AP found: \"%s\", RSSI: %i dBm"CLR_DEF, aps[i].ssid, aps[i].rssi);
+
+            if (strcmp(config.wifi.ssid, aps[i].ssid) == 0)
+              config_ap_found = true;
+          }
+
+          if (config_ap_found)
+          {
+            errors_scan_ap = 0;
+            LEDs_Yellow(LED_CTRL_BLINK, 33, 33, 0);
+            PrintfLogsCRLF("WiFi connecting to \"%s\" network ...", config.wifi.ssid);
+
+            res = esp_sta_join(config.wifi.ssid, config.wifi.passw, NULL, 0, NULL, NULL, 1);
+            if (res == espOK)
+            {
+              esp_ip_t ip;
+              esp_sta_copy_ip(&ip, NULL, NULL);
+              PrintfLogsCRLF(CLR_GR"WiFi connected to \"%s\" access point OK"CLR_DEF, config.wifi.ssid);
+              PrintfLogsCRLF(CLR_GR"WiFi station IP address: %u.%u.%u.%u"CLR_DEF, (int) ip.ip[0],
+                                                                                      (int) ip.ip[1],
+                                                                                      (int) ip.ip[2],
+                                                                                      (int) ip.ip[3]);
+
+              errors_join_st = 0;
+            }
+            else
+            {
+              config_ap_found = false;
+              PrintfLogsCRLF(CLR_RD"ERROR: WiFi connection to \"%s\" network fault! (%s)"CLR_DEF, config.wifi.ssid, ESPErrorHandler(res));
+              osDelay(1000);
+              if (++errors_join_st > WIFI_MAX_JOIN_ERRORS)
+              {
+                osDelay(30000);
+                errors_join_st = 0;
+                continue;
+              }
+              else
+                continue;
+            }
+          }
+          else
+          {
+            PrintfLogsCRLF(CLR_RD"ERROR: WiFi Access point \"%s\" is not found or has a weak signal!"CLR_DEF, config.wifi.ssid);
+            osDelay(5000);
+            if (++errors_scan_ap > WIFI_MAX_SCAN_ERRORS)
+            {
+              osDelay(60000);
+              errors_scan_ap = 0;
+              continue;
+            }
+            else
+              continue;
+          }
+        }
+        else
+          PrintfLogsCRLF(CLR_RD"ERROR: WiFi Access point scan failed (%s)"CLR_DEF, ESPErrorHandler(res));
+      }
+    }
+    else
+      PrintfLogsCRLF(CLR_RD"ERROR: WiFi set mode ST failed (%s)"CLR_DEF, ESPErrorHandler(res));
+
+
+    PrintfLogsCRLF("Checking \"%s\" for internet connection ...", config.wifi.ssid);
+
+
+    for (;;)
+    {
+      if (!esp_sta_is_joined())
+      {
+        osDelay(1000);
+        break;
+      }
+
+
+      if (wifi.restart)
+      {
+        wifi.restart = false;
+        break;
+      }
+
+
+      if (!wifi.sta_ready)
+      {
+        res = esp_ping("8.8.8.8", NULL, NULL, NULL, 1);
+        if (res == espOK)
+        {
+          errors_net_check = 0;
+          LEDs_Yellow(LED_CTRL_OFF, 0, 0, 0);
+          wifi.sta_ready = true;
+          PrintfLogsCRLF(CLR_GR"Internet connection \"%s\" OK"CLR_DEF, config.wifi.ssid);
+
+          if (!mqtt_wifi_transport && !esp8266_onair)
+          {
+            PrintfLogsCRLF(CLR_GR"Switching MQTT transport to WiFi"CLR_DEF);
+            MQTTClient_Stop();
+          }
+        }
+        else
+        {
+          if (++errors_net_check > WIFI_MAX_NET_CHECK_ERRORS)
+          {
+            errors_net_check = 0;
+            PrintfLogsCRLF(CLR_RD"ERROR: \"%s\" access point doesn't have internet connection!"CLR_DEF, config.wifi.ssid);
+            PrintfLogsCRLF("Checking \"%s\" for internet connection ...", config.wifi.ssid);
+            continue;
+          }
+          else
+          {
+            osDelay(1000);
+            continue;
+          }
+        }
+      }
+
+
+      if (esp8266_onair)
+      {
+        wifi.sta_ready = false;
+        esp8266_logs = true;
+        esp_update_sw(NULL, NULL, 1);
+        esp8266_logs = false;
+        esp8266_onair = false;
+        wifi.restart = true;
+        GSM_Start();
+      }
+
+      osDelay(100);
+    }
+  }
+
+  osThreadTerminate(NULL);
+}
+/******************************************************************************/
+
+
+
+/**
+ * @brief  Function implementing the wifiApTask thread.
+ *         This task drives the esp module in AP mode.
+ * @param  argument: Not used
+ * @retval None
+ */
+void TaskWiFiAP(void const *argument)
+{
+  /* Cyclic check that wifi module is ready */
+  while (!wifi.esp_ready)
+    osDelay(100);
+
+  for (;;)
+  {
+    wifi.netconn_server = NULL;
+    wifi.netconn_client = NULL;
+
+    esp_reset_with_delay(ESP_CFG_RESET_DELAY_DEFAULT, NULL, NULL, 1);
+
+    wifi.ap_ready = false;
+    esp_sta_t stas[1];
+    size_t staf;
+
+    espr_t res = esp_set_wifi_mode(ESP_MODE_AP, 0, NULL, NULL, 1);
+    if (res == espOK)
+    {
+      esp_ip_t ip, gw, nm;
+      const char* str = NULL;
+
+      str = config.mqtt.local;
+      espi_parse_ip(&str, &ip);
+      str = config.mqtt.local;
+      espi_parse_ip(&str, &gw);
+      str = "255.255.255.0";
+      espi_parse_ip(&str, &nm);
+      PrintfLogsCRLF(CLR_GR"WiFi mode is now "CLR_YL"AP"CLR_DEF);
+
+      res = esp_ap_setip(&ip, &gw, &nm, 0, NULL, NULL, 1);
+      if (res == espOK)
+      {
+        res = esp_ap_configure("VOLTS_NET", "volts_local", 9, ESP_ECN_WPA2_PSK, ESP_ARRAYSIZE(stas), 0, 1, NULL, NULL, 1);
+        if (res == espOK)
+        {
+          res = esp_ap_list_sta(stas, ESP_ARRAYSIZE(stas), &staf, NULL, NULL, 1);
+          if (res == espOK)
+          {
+            PrintfLogsCRLF(CLR_GR"WiFi Stations scan OK"CLR_DEF);
+
+            for (u8 i = 0; i < staf; i++)
+              PrintfLogsCRLF(CLR_GR"Wifi Station found: %u.%u.%u.%u"CLR_DEF, stas[i].ip.ip[0], stas[i].ip.ip[1], stas[i].ip.ip[2], stas[i].ip.ip[3]);
+
+            wifi.ap_ready = true;
+
+            wifi.netconn_server = esp_netconn_new(ESP_NETCONN_TYPE_TCP);
+            if (wifi.netconn_server != NULL)
+            {
+              res = esp_netconn_bind(wifi.netconn_server, config.mqtt.port);
+              if (res == espOK)
+              {
+                PrintfLogsCRLF(CLR_GR"Server netconn listens on port %u"CLR_DEF, config.mqtt.port);
+
+                res = esp_netconn_listen(wifi.netconn_server);
+
+                for (;;)
+                {
+                  res = esp_netconn_accept(wifi.netconn_server, &wifi.netconn_client);
+                  if (res == espOK)
+                  {
+                    wifi.host_connected = true;
+                    esp_pbuf_p pbuf = NULL;
+                    PrintfLogsCRLF(CLR_GR"NETCONN new client connected"CLR_DEF);
+
+                    esp_netconn_set_receive_timeout(wifi.netconn_client, 1000);
+                    for (;;)
+                    {
+                      res = esp_netconn_receive(wifi.netconn_client, &pbuf);
+                      if (res == espOK)
+                      {
+                        PrintfLogsCRLF(CLR_GR"NETCONN data received, %u/%u bytes"CLR_DEF, (int) esp_pbuf_length(pbuf, 1), (int) esp_pbuf_length(pbuf, 0));
+
+                        if (wifi.pbuf == NULL)
+                          wifi.pbuf = pbuf;
+                        else
+                          esp_pbuf_cat(wifi.pbuf, pbuf);
+
+                        Broker_Parsing(REMOTE_CONNECT, (char *) esp_pbuf_data(pbuf), esp_pbuf_length(pbuf, 0));
+
+                        esp_pbuf_free(wifi.pbuf);
+                        wifi.pbuf = NULL;
+                      }
+                      else if (res == espTIMEOUT)
+                      {
+                        if (!wifi.host_connected)
+                          break;
+                        if (wifi.restart)
+                          break;
+                      }
+                      else
+                      {
+                        PrintfLogsCRLF(CLR_RD"NETCONN receiving error (%s)"CLR_DEF, ESPErrorHandler(res));
+                        break;
+                      }
+                    }
+                    if (wifi.netconn_client)
+                    {
+                      esp_netconn_close(wifi.netconn_client);
+                      esp_netconn_delete(wifi.netconn_client);
+                      wifi.netconn_client = NULL;
+                    }
+                    if (wifi.pbuf != NULL)
+                    {
+                      esp_pbuf_free(wifi.pbuf);
+                      wifi.pbuf = NULL;
+                    }
+                  }
+                  else
+                  {
+                    PrintfLogsCRLF(CLR_RD"NETCONN connection accept error (%s)"CLR_DEF, ESPErrorHandler(res));
+                    break;
+                  }
+                  if (wifi.restart)
+                  {
+                    wifi.restart = false;
+                    break;
+                  }
+                }
+              }
+              else
+                PrintfLogsCRLF(CLR_RD"NETCONN netconn_server cannot bind to port (%s)"CLR_DEF, ESPErrorHandler(res));
+            }
+            else
+              PrintfLogsCRLF(CLR_RD"Cannot create netconn_server NETCONN"CLR_DEF);
+            if (wifi.netconn_server)
+            {
+              esp_netconn_close(wifi.netconn_server);
+              esp_netconn_delete(wifi.netconn_server);
+              wifi.netconn_server = NULL;
+            }
+          }
+          else
+            PrintfLogsCRLF(CLR_RD"WiFi Stations scan failed (%s)"CLR_DEF, ESPErrorHandler(res));
+        }
+        else
+          PrintfLogsCRLF(CLR_RD"WiFi configure AP failed (%s)"CLR_DEF, ESPErrorHandler(res));
+      }
+      else
+        PrintfLogsCRLF(CLR_RD"WiFi set IP AP failed (%s)"CLR_DEF, ESPErrorHandler(res));
+    }
+    else
+      PrintfLogsCRLF(CLR_RD"WiFi set mode AP failed (%s)"CLR_DEF, ESPErrorHandler(res));
+  }
+
+  osThreadTerminate(NULL);
+}
+/******************************************************************************/
+#endif
 
 
 /**
@@ -545,12 +937,12 @@ void WiFiErrorHandler(WIFI_ERROR_t error)
       break;
     case WIFI_INIT_ERROR:
     {
-      PrintfConsoleCRLF("\t"CLR_DEF"ERROR WIFI: "CLR_RD"INIT"CLR_DEF);
+      PrintfLogsCRLF("\t"CLR_DEF"ERROR WIFI: "CLR_RD"INIT"CLR_DEF);
       break;
     }
     default:
     {
-      PrintfConsoleCRLF("\t"CLR_DEF"ERROR RTC: "CLR_RD"UNDEFINED"CLR_DEF);
+      PrintfLogsCRLF("\t"CLR_DEF"ERROR RTC: "CLR_RD"UNDEFINED"CLR_DEF);
       break;
     }
   }
@@ -632,7 +1024,7 @@ void WiFiGetMac(void)
 {
   esp_mac_t mac_addr = {0};
   esp_sta_getmac(&mac_addr, 0, NULL, NULL, 1);
-  PrintfConsoleCRLF("\t"CLR_YL"ESP8266 MAC %02X:%02X:%02X:%02X:%02X:%02X"CLR_DEF, mac_addr.mac[0], mac_addr.mac[1],
+  PrintfLogsCRLF("\t"CLR_YL"ESP8266 MAC %02X:%02X:%02X:%02X:%02X:%02X"CLR_DEF, mac_addr.mac[0], mac_addr.mac[1],
                                                                                  mac_addr.mac[2], mac_addr.mac[3],
                                                                                  mac_addr.mac[4], mac_addr.mac[5]);
 }
@@ -654,11 +1046,11 @@ uint8_t WiFiGetInfoAp(void)
 
   if (res != espOK)
   {
-    PrintfConsoleCRLF("\t"CLR_YL"ESP8266 is not connected to AP"CLR_DEF);
+    PrintfLogsCRLF("\t"CLR_YL"ESP8266 is not connected to AP"CLR_DEF);
     return res;
   }
 
-  PrintfConsoleCRLF("\t"CLR_YL"ESP8266 AP \"%s\" RSSI %d dB"CLR_DEF, ap_info.ssid, ap_info.rssi);
+  PrintfLogsCRLF("\t"CLR_YL"ESP8266 AP \"%s\" RSSI %d dB"CLR_DEF, ap_info.ssid, ap_info.rssi);
 
   return res;
 }
@@ -675,7 +1067,8 @@ uint8_t prvWiFiResetWithDelay(void)
 {
   uint8_t res = espOK;
   res = esp_reset_with_delay(ESP_CFG_RESET_DELAY_DEFAULT, NULL, NULL, 1);
-  PrintfConsoleCRLF(CLR_DEF"WiFi Reset: (%s)"CLR_DEF, prvESPErrorHandler(res));
+  //res = esp_reset(NULL, NULL, 1);
+  PrintfLogsCRLF(CLR_DEF"WiFi Reset: (%s)"CLR_DEF, ESPErrorHandler(res));
 
   return res;
 }
@@ -694,11 +1087,11 @@ uint8_t prvWiFiSetMode(uint8_t mode)
   res = esp_set_wifi_mode(mode, 0, NULL, NULL, 1);
 
   if (mode == ESP_MODE_STA)
-    PrintfConsoleCRLF(CLR_DEF"WiFi set mode ST (%s)"CLR_DEF, prvESPErrorHandler(res));
+    PrintfLogsCRLF(CLR_DEF"WiFi set mode ST (%s)"CLR_DEF, ESPErrorHandler(res));
   else if (mode == ESP_MODE_AP)
-    PrintfConsoleCRLF(CLR_DEF"WiFi set mode AP (%s)"CLR_DEF, prvESPErrorHandler(res));
+    PrintfLogsCRLF(CLR_DEF"WiFi set mode AP (%s)"CLR_DEF, ESPErrorHandler(res));
   else
-    PrintfConsoleCRLF(CLR_DEF"WiFi set mode ST and AP (%s)"CLR_DEF, prvESPErrorHandler(res));
+    PrintfLogsCRLF(CLR_DEF"WiFi set mode ST and AP (%s)"CLR_DEF, ESPErrorHandler(res));
 
   return res;
 }
@@ -717,7 +1110,7 @@ uint8_t prvWiFiListAp(esp_ap_t *access_point, size_t *access_point_find)
   res = esp_sta_list_ap(NULL, access_point, ESP_ARRAYSIZE(access_point),
       access_point_find, NULL, NULL, 1);
 
-  PrintfConsoleCRLF(CLR_DEF"WiFi Access point scan: (%s)"CLR_DEF, prvESPErrorHandler(res));
+  PrintfLogsCRLF(CLR_DEF"WiFi Access point scan: (%s)"CLR_DEF, ESPErrorHandler(res));
 
   return res;
 }
@@ -736,13 +1129,13 @@ uint8_t prvWiFiAccessPointsFound(size_t access_point_find, esp_ap_t *access_poin
 
   for (uint8_t i = 0; i < access_point_find; i++)
   {
-    PrintfConsoleCRLF(CLR_GR"Wifi AP found: \"%s\", RSSI: %i dBm"CLR_DEF, access_point[i].ssid, access_point[i].rssi);
+    PrintfLogsCRLF(CLR_GR"Wifi AP found: \"%s\", RSSI: %i dBm"CLR_DEF, access_point[i].ssid, access_point[i].rssi);
 
     if (strcmp(config.wifi.ssid, access_point[i].ssid) == 0)
       *config_ap_found = true;
   }
 
-  PrintfConsoleCRLF("WiFi Access point \"%s\" is (%s)"CLR_DEF, config.wifi.ssid, prvESPErrorHandler(res));
+  PrintfLogsCRLF("WiFi Access point \"%s\" is (%s)"CLR_DEF, config.wifi.ssid, ESPErrorHandler(res));
 
   return res;
 }
@@ -761,7 +1154,7 @@ uint8_t prvWiFiStaJoin(void)
   res = esp_sta_join(config.wifi.ssid, config.wifi.passw, NULL, 0, NULL, NULL, 1);
   osDelay(1000);
 
-  PrintfConsoleCRLF(CLR_DEF"WiFi connection to \"%s\" network (%s)"CLR_DEF, config.wifi.ssid, prvESPErrorHandler(res));
+  PrintfLogsCRLF(CLR_DEF"WiFi connection to \"%s\" network (%s)"CLR_DEF, config.wifi.ssid, ESPErrorHandler(res));
 
   return res;
 }
@@ -800,13 +1193,13 @@ uint8_t prvWiFiCopyIp(esp_ip_t *ip)
 
   if (res != espOK)
   {
-    PrintfConsoleCRLF(CLR_DEF"Copy IP fault! (%s)"CLR_DEF, prvESPErrorHandler(res));
+    PrintfLogsCRLF(CLR_DEF"Copy IP fault! (%s)"CLR_DEF, ESPErrorHandler(res));
     return res;
   }
   else
   {
-    PrintfConsoleCRLF(CLR_GR"WiFi connected to \"%s\" access point OK"CLR_DEF, config.wifi.ssid);
-    PrintfConsoleCRLF(CLR_GR"WiFi station IP address: %u.%u.%u.%u"CLR_DEF, (int) ip->ip[0],
+    PrintfLogsCRLF(CLR_GR"WiFi connected to \"%s\" access point OK"CLR_DEF, config.wifi.ssid);
+    PrintfLogsCRLF(CLR_GR"WiFi station IP address: %u.%u.%u.%u"CLR_DEF, (int) ip->ip[0],
     (int) ip->ip[1], (int) ip->ip[2], (int) ip->ip[3]);
   }
 
@@ -828,8 +1221,8 @@ uint8_t prvWiFiPing(void)
 
   if (res != espOK)
   {
-    PrintfConsoleCRLF(CLR_RD"ERROR: \"%s\" access point doesn't have internet connection!"CLR_DEF, config.wifi.ssid);
-    PrintfConsoleCRLF("Checking \"%s\" for internet connection ...", config.wifi.ssid);
+    PrintfLogsCRLF(CLR_RD"ERROR: \"%s\" access point doesn't have internet connection!"CLR_DEF, config.wifi.ssid);
+    PrintfLogsCRLF("Checking \"%s\" for internet connection ...", config.wifi.ssid);
   }
 
   return res;
@@ -851,7 +1244,7 @@ uint8_t prvWiFiParseIp(const char **str, esp_ip_t *ip)
   if (parse_result != 1)
   {
     res = espERRPARSEIP;
-    PrintfConsoleCRLF(CLR_DEF"Parse IP (%s)"CLR_DEF, prvESPErrorHandler(res));
+    PrintfLogsCRLF(CLR_DEF"Parse IP (%s)"CLR_DEF, ESPErrorHandler(res));
   }
 
   return res;
@@ -870,7 +1263,7 @@ uint8_t prvWiFiSetIp(esp_ip_t *ip, esp_ip_t *gw, esp_ip_t *nm)
   uint8_t res = espOK;
 
   res = esp_ap_setip(ip, gw, nm, 0, NULL, NULL, 1);
-  PrintfConsoleCRLF(CLR_DEF"WiFi set IP AP (%s)"CLR_DEF, prvESPErrorHandler(res));
+  PrintfLogsCRLF(CLR_DEF"WiFi set IP AP (%s)"CLR_DEF, ESPErrorHandler(res));
 
   return res;
 }
@@ -889,7 +1282,7 @@ uint8_t prvWiFiApConfigure(const char *ssid, const char *password, uint8_t chann
   uint8_t res = espOK;
 
   res = esp_ap_configure(ssid, password, channel, encryption, max_stations, hide, def, evt_fn, evt_argument, blocking);
-  PrintfConsoleCRLF(CLR_DEF"WiFi configure AP (%s)"CLR_DEF, prvESPErrorHandler(res));
+  PrintfLogsCRLF(CLR_DEF"WiFi configure AP (%s)"CLR_DEF, ESPErrorHandler(res));
 
   return res;
 }
@@ -907,7 +1300,7 @@ uint8_t prvWiFiApListSta(esp_sta_t *stations, size_t *stations_quantity, const u
   uint8_t res = espOK;
 
   res = esp_ap_list_sta(stations, ESP_ARRAYSIZE(stations), stations_quantity, NULL, NULL, blocking);
-  PrintfConsoleCRLF(CLR_DEF"WiFi station scan (%s)"CLR_DEF, prvESPErrorHandler(res));
+  PrintfLogsCRLF(CLR_DEF"WiFi station scan (%s)"CLR_DEF, ESPErrorHandler(res));
 
   return res;
 }
@@ -923,7 +1316,7 @@ uint8_t prvWiFiApListSta(esp_sta_t *stations, size_t *stations_quantity, const u
 void prvWiFiStationList(esp_sta_t *stations, size_t stations_quantity)
 {
   for (uint8_t i = 0; i < stations_quantity; i++)
-    PrintfConsoleCRLF(CLR_GR"Wifi Station found: %u.%u.%u.%u"CLR_DEF, stations[i].ip.ip[0], stations[i].ip.ip[1], stations[i].ip.ip[2], stations[i].ip.ip[3]);
+    PrintfLogsCRLF(CLR_GR"Wifi Station found: %u.%u.%u.%u"CLR_DEF, stations[i].ip.ip[0], stations[i].ip.ip[1], stations[i].ip.ip[2], stations[i].ip.ip[3]);
 }
 /******************************************************************************/
 
@@ -941,7 +1334,7 @@ uint8_t prvWiFiConnectionNew(WIFI_DATA_t *wifi)
 
   if (wifi->netconnection_server == NULL)
   {
-    PrintfConsoleCRLF(CLR_RD"Cannot create netconn_server NETCONN"CLR_DEF);
+    PrintfLogsCRLF(CLR_RD"Cannot create netconn_server NETCONN"CLR_DEF);
     if (wifi->netconnection_server)
     {
       prvWiFiNetConnectionClose(wifi->netconnection_server);
@@ -967,7 +1360,7 @@ uint8_t prvWiFiBindConnection(esp_netconn_p netconnection_server, uint16_t port)
 
   res = esp_netconn_bind(netconnection_server, port);
 
-  PrintfConsoleCRLF(CLR_DEF"Netconn on port %u (%s)"CLR_DEF, config.mqtt.port, prvESPErrorHandler(res));
+  PrintfLogsCRLF(CLR_DEF"Netconn on port %u (%s)"CLR_DEF, config.mqtt.port, ESPErrorHandler(res));
 
   return res;
 }
@@ -986,7 +1379,7 @@ uint8_t prvWiFiListenConnection(esp_netconn_p netconnection_server)
 
   res = esp_netconn_listen(netconnection_server);
 
-  PrintfConsoleCRLF(CLR_DEF"Listening to net connection (%s)"CLR_DEF, prvESPErrorHandler(res));
+  PrintfLogsCRLF(CLR_DEF"Listening to net connection (%s)"CLR_DEF, ESPErrorHandler(res));
 
   return res;
 }
@@ -1005,7 +1398,7 @@ uint8_t prvWiFiAcceptConnection(esp_netconn_p netconnection_server, esp_netconn_
 
   res = esp_netconn_accept(netconnection_server, netconnection_client);
 
-  PrintfConsoleCRLF(CLR_DEF"Accept to new connection (%s)"CLR_DEF, prvESPErrorHandler(res));
+  PrintfLogsCRLF(CLR_DEF"Accept to new connection (%s)"CLR_DEF, ESPErrorHandler(res));
 
   return res;
 }
@@ -1022,7 +1415,7 @@ void prvWiFiSetReceiveTimeout(esp_netconn_p netconnection_client, uint32_t timeo
 {
 
   esp_netconn_set_receive_timeout(netconnection_client, timeout);
-  PrintfConsoleCRLF(CLR_DEF"Receive timeout is set to"CLR_GR "(%u)" "seconds"CLR_DEF, timeout);
+  PrintfLogsCRLF(CLR_DEF"Receive timeout is set to"CLR_GR "(%u)" "seconds"CLR_DEF, timeout);
 }
 /******************************************************************************/
 
@@ -1036,7 +1429,7 @@ void prvWiFiSetReceiveTimeout(esp_netconn_p netconnection_client, uint32_t timeo
 void prvWiFiFreePacketBuffer(esp_pbuf_p packet_buffer)
 {
   esp_pbuf_free(packet_buffer);
-  PrintfConsoleCRLF(CLR_DEF"Free packet buffer");
+  PrintfLogsCRLF(CLR_DEF"Free packet buffer");
 }
 /******************************************************************************/
 
@@ -1053,7 +1446,7 @@ uint8_t prvWiFiReceiveConnection(esp_netconn_p netconnection_client, esp_pbuf_p*
 
   res = esp_netconn_receive(netconnection_client, pbuf);
 
-  PrintfConsoleCRLF(CLR_DEF"NETCONN data receiving (%s)"CLR_DEF, prvESPErrorHandler(res));
+  PrintfLogsCRLF(CLR_DEF"NETCONN data receiving (%s)"CLR_DEF, ESPErrorHandler(res));
 
   return res;
 }
@@ -1072,7 +1465,7 @@ uint8_t prvWiFiCloseConnection(esp_conn_p connection, const uint32_t blocking)
 
   res = esp_conn_close(connection, blocking);
 
-  PrintfConsoleCRLF(CLR_DEF"Connection close (%s)"CLR_DEF, prvESPErrorHandler(res));
+  PrintfLogsCRLF(CLR_DEF"Connection close (%s)"CLR_DEF, ESPErrorHandler(res));
 
   return res;
 }
@@ -1088,7 +1481,7 @@ uint8_t prvWiFiCloseConnection(esp_conn_p connection, const uint32_t blocking)
 void prvWiFiConcatenatePacketBuffers(esp_pbuf_p head, const esp_pbuf_p tail)
 {
   esp_pbuf_cat(head, tail);
-  PrintfConsoleCRLF(CLR_DEF"Concatenated 2 buffers into one");
+  PrintfLogsCRLF(CLR_DEF"Concatenated 2 buffers into one");
 }
 /******************************************************************************/
 
@@ -1102,7 +1495,7 @@ void prvWiFiConcatenatePacketBuffers(esp_pbuf_p head, const esp_pbuf_p tail)
 void prvWiFiNetConnectionClose(esp_netconn_p netconnection_client)
 {
   esp_netconn_close(netconnection_client);
-  PrintfConsoleCRLF(CLR_DEF"Closed netconnection");
+  PrintfLogsCRLF(CLR_DEF"Closed netconnection");
 }
 /******************************************************************************/
 
@@ -1116,7 +1509,7 @@ void prvWiFiNetConnectionClose(esp_netconn_p netconnection_client)
 void prvWiFiNetConnectionDelete(esp_netconn_p netconnection_client)
 {
   esp_netconn_delete(netconnection_client);
-  PrintfConsoleCRLF(CLR_DEF"Deleted netconnection");
+  PrintfLogsCRLF(CLR_DEF"Deleted netconnection");
 }
 /******************************************************************************/
 
@@ -1129,13 +1522,13 @@ espr_t esp_callback_function(esp_evt_t* event)
     {
       case ESP_EVT_AT_VERSION_NOT_SUPPORTED:
       {
-        PrintfConsoleCRLF(CLR_RD"This version API ESP8266 is not supported!"CLR_DEF);
+        PrintfLogsCRLF(CLR_RD"This version API ESP8266 is not supported!"CLR_DEF);
         break;
       }
       case ESP_EVT_INIT_FINISH:
       {
         wifi.esp_ready = true;
-        PrintfConsoleCRLF(CLR_GR"WiFi initialized OK"CLR_DEF);
+        PrintfLogsCRLF(CLR_GR"WiFi initialized OK"CLR_DEF);
         break;
       }
       case ESP_EVT_RESET_DETECTED:
@@ -1144,7 +1537,7 @@ espr_t esp_callback_function(esp_evt_t* event)
         wifi.ap_ready = false;
         wifi.sta_ready = false;
         wifi.host_connected = false;
-        PrintfConsoleCRLF("WiFi to reset ...");
+        PrintfLogsCRLF("WiFi to reset ...");
         break;
       }
       case ESP_EVT_RESET:
@@ -1153,7 +1546,7 @@ espr_t esp_callback_function(esp_evt_t* event)
         wifi.ap_ready = false;
         wifi.sta_ready = false;
         wifi.host_connected = false;
-        PrintfConsoleCRLF(CLR_GR"WiFi reset OK"CLR_DEF);
+        PrintfLogsCRLF(CLR_GR"WiFi reset OK"CLR_DEF);
         break;
       }
       case ESP_EVT_RESTORE:
@@ -1162,28 +1555,28 @@ espr_t esp_callback_function(esp_evt_t* event)
         wifi.ap_ready = false;
         wifi.sta_ready = false;
         wifi.host_connected = false;
-        PrintfConsoleCRLF(CLR_GR"WiFi restore OK"CLR_DEF);
+        PrintfLogsCRLF(CLR_GR"WiFi restore OK"CLR_DEF);
         break;
       }
       case ESP_EVT_CMD_TIMEOUT:
       {
-        PrintfConsoleCRLF(CLR_RD"WiFi command timeout"CLR_DEF);
+        PrintfLogsCRLF(CLR_RD"WiFi command timeout"CLR_DEF);
         break;
       }
       case ESP_EVT_WIFI_CONNECTED:
       {
-        PrintfConsoleCRLF(CLR_GR"WiFi AP connected OK"CLR_DEF);
+        PrintfLogsCRLF(CLR_GR"WiFi AP connected OK"CLR_DEF);
         //wifi.sta_ready = true;
         break;
       }
       case ESP_EVT_WIFI_GOT_IP:
       {
-        PrintfConsoleCRLF(CLR_GR"WiFi AP got IP"CLR_DEF);
+        PrintfLogsCRLF(CLR_GR"WiFi AP got IP"CLR_DEF);
         break;
       }
 //      case ESP_EVT_WIFI_DISCONNECTED:
 //      {
-//        PrintfConsoleCRLF(CLR_RD"WiFi AP disconnected!"CLR_DEF);
+//        PrintfLogsCRLF(CLR_RD"WiFi AP disconnected!"CLR_DEF);
 //        wifi.host_connected = false;
 //        if (mqtt_wifi_transport)
 //          MQTTClient_Stop();
@@ -1191,12 +1584,12 @@ espr_t esp_callback_function(esp_evt_t* event)
 //      }
       case ESP_EVT_WIFI_IP_ACQUIRED:
       {
-        PrintfConsoleCRLF(CLR_GR"WiFi AP IP acquired"CLR_DEF);
+        PrintfLogsCRLF(CLR_GR"WiFi AP IP acquired"CLR_DEF);
         break;
       }
       case ESP_EVT_STA_LIST_AP:
       {
-        PrintfConsoleCRLF(CLR_GR"WiFi APs listed"CLR_DEF);
+        PrintfLogsCRLF(CLR_GR"WiFi APs listed"CLR_DEF);
         break;
       }
       case ESP_EVT_STA_JOIN_AP:
@@ -1206,12 +1599,12 @@ espr_t esp_callback_function(esp_evt_t* event)
         {
           esp_ip_t ip;
           esp_sta_copy_ip(&ip, NULL, NULL);
-          PrintfConsoleCRLF(CLR_GR"WiFi join to AP (%u.%u.%u.%u)"CLR_DEF, ip.ip[0], ip.ip[1], ip.ip[2], ip.ip[3]);
+          PrintfLogsCRLF(CLR_GR"WiFi join to AP (%u.%u.%u.%u)"CLR_DEF, ip.ip[0], ip.ip[1], ip.ip[2], ip.ip[3]);
         }
         else
         {
           wifi.host_connected = false;
-          PrintfConsoleCRLF(CLR_RD"WiFi AP join ERROR! (%u)"CLR_DEF, status);
+          PrintfLogsCRLF(CLR_RD"WiFi AP join ERROR! (%u)"CLR_DEF, status);
         }
         break;
       }
@@ -1227,14 +1620,14 @@ espr_t esp_callback_function(esp_evt_t* event)
       {
         esp_mac_t *mac;
         mac = esp_evt_ap_connected_sta_get_mac(event);
-        PrintfConsoleCRLF(CLR_GR"WiFi station connected MAC %X:%X:%X:%X:%X:%X"CLR_DEF, mac->mac[0], mac->mac[1], mac->mac[2], mac->mac[3], mac->mac[4], mac->mac[5]);
+        PrintfLogsCRLF(CLR_GR"WiFi station connected MAC %X:%X:%X:%X:%X:%X"CLR_DEF, mac->mac[0], mac->mac[1], mac->mac[2], mac->mac[3], mac->mac[4], mac->mac[5]);
         break;
       }
       case ESP_EVT_AP_DISCONNECTED_STA:
       {
         esp_mac_t *mac;
         mac = esp_evt_ap_disconnected_sta_get_mac(event);
-        PrintfConsoleCRLF(CLR_RD"WiFi station disconnected! (MAC %X:%X:%X:%X:%X:%X)"CLR_DEF, mac->mac[0], mac->mac[1], mac->mac[2], mac->mac[3], mac->mac[4], mac->mac[5]);
+        PrintfLogsCRLF(CLR_RD"WiFi station disconnected! (MAC %X:%X:%X:%X:%X:%X)"CLR_DEF, mac->mac[0], mac->mac[1], mac->mac[2], mac->mac[3], mac->mac[4], mac->mac[5]);
         wifi.host_connected = false;
         wifi.restart = true;
         break;
@@ -1245,7 +1638,7 @@ espr_t esp_callback_function(esp_evt_t* event)
 //        ip = esp_evt_ap_ip_sta_get_ip(event);
 //        memset(mqtt_local_ip, 0, sizeof(mqtt_local_ip));
 //        Sprintf(mqtt_local_ip, "%d.%d.%d.%d", ip->ip[0], ip->ip[1], ip->ip[2], ip->ip[3]);
-//        PrintfConsoleCRLF(CLR_GR"WiFi station got IP %s"CLR_DEF, mqtt_local_ip);
+//        PrintfLogsCRLF(CLR_GR"WiFi station got IP %s"CLR_DEF, mqtt_local_ip);
 //        break;
 //      }
       case ESP_EVT_SERVER:
@@ -1253,18 +1646,18 @@ espr_t esp_callback_function(esp_evt_t* event)
         espr_t res = esp_evt_server_get_result(event);
         esp_port_t port = esp_evt_server_get_port(event);
         uint8_t ena = esp_evt_server_is_enable(event);
-        PrintfConsoleCRLF(CLR_GR"NETCONN server: res=%u, port=%u, ena=%u"CLR_DEF, res, port, ena);
+        PrintfLogsCRLF(CLR_GR"NETCONN server: res=%u, port=%u, ena=%u"CLR_DEF, res, port, ena);
   //      esp_ip_t *ip;
   //      ip = esp_evt_ap_ip_sta_get_ip(evt);
   //      memset(mqtt_local_ip, 0, sizeof(mqtt_local_ip));
   //      Sprintf(mqtt_local_ip, "%d.%d.%d.%d", ip->ip[0], ip->ip[1], ip->ip[2], ip->ip[3]);
-  //      PrintfConsoleCRLF(CLR_GR"WiFi station got IP %s"CLR_DEF, mqtt_local_ip);
+  //      PrintfLogsCRLF(CLR_GR"WiFi station got IP %s"CLR_DEF, mqtt_local_ip);
   //      wifi.sta_ready = true;
         break;
       }
       default:
       {
-        PrintfConsoleCRLF("WiFi ESP callback.%u? ", esp_evt_get_type(event));
+        PrintfLogsCRLF("WiFi ESP callback.%u? ", esp_evt_get_type(event));
         break;
       }
     }
@@ -1280,7 +1673,7 @@ espr_t esp_callback_function(esp_evt_t* event)
  * @param  err: Result enumeration used across application functions
  * @retval char: String that describes error code passed to the function
  */
-char *prvESPErrorHandler(espr_t error)
+char *ESPErrorHandler(espr_t error)
 {
   switch (error)
   {
