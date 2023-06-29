@@ -51,6 +51,8 @@ esp_thread_produce(void* const arg) {
     espr_t res;
     uint32_t time;
 
+    ESP_DEBUGF(ESP_CFG_DBG_THREAD | ESP_DBG_TYPE_TRACE, "[ESP THREAD] Producer thread started\r\n");
+
     /* Thread is running, unlock semaphore */
     if (esp_sys_sem_isvalid(sem)) {
         esp_sys_sem_release(sem);               /* Release semaphore */
@@ -74,6 +76,8 @@ esp_thread_produce(void* const arg) {
          * if device present flag changes
          */
         if (!e->status.f.dev_present) {
+            ESP_DEBUGF(ESP_CFG_DBG_THREAD | ESP_DBG_TYPE_TRACE | ESP_DBG_LVL_WARNING,
+                       "[ESP THREAD] Device is not present\r\n");
             res = espERRNODEVICE;
         }
 
