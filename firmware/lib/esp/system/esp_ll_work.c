@@ -105,8 +105,9 @@ void
 configure_uart(uint32_t baudrate) {
     if (!initialized)
     {
-      LL_USART_InitTypeDef USART_InitStruct = {0};
-      LL_GPIO_InitTypeDef GPIO_InitStruct = {0};
+      LL_USART_InitTypeDef USART_InitStruct;
+
+      LL_GPIO_InitTypeDef GPIO_InitStruct;
 
       LL_APB1_GRP1_EnableClock(LL_APB1_GRP1_PERIPH_UART5);
       __DSB();
@@ -126,7 +127,6 @@ configure_uart(uint32_t baudrate) {
       GPIO_InitStruct.Pull = LL_GPIO_PULL_NO;
       LL_GPIO_Init(ESP_CTRL_GPIO_Port, &GPIO_InitStruct);
       LL_GPIO_SetOutputPin(ESP_CTRL_GPIO_Port, ESP_CTRL_Pin);
-
       if (esp8266_update)
         LL_GPIO_ResetOutputPin(ESP_CTRL_GPIO_Port, ESP_CTRL_Pin);
 
@@ -146,12 +146,6 @@ configure_uart(uint32_t baudrate) {
       GPIO_InitStruct.Alternate = LL_GPIO_AF_8;
       LL_GPIO_Init(ESP_RX_GPIO_Port, &GPIO_InitStruct);
 
-      NVIC_SetPriority(UART5_IRQn, 0x05);
-      NVIC_EnableIRQ(UART5_IRQn);
-
-      LL_USART_EnableIT_RXNE(UART5);
-      LL_USART_EnableIT_ERROR(UART5);
-
       USART_InitStruct.BaudRate = baudrate;
       USART_InitStruct.DataWidth = LL_USART_DATAWIDTH_8B;
       USART_InitStruct.StopBits = LL_USART_STOPBITS_1;
@@ -162,12 +156,34 @@ configure_uart(uint32_t baudrate) {
       LL_USART_Init(UART5, &USART_InitStruct);
 
       LL_USART_DisableIT_CTS(UART5);
+
       LL_USART_ConfigAsyncMode(UART5);
+
+      NVIC_SetPriority(UART5_IRQn, 5);
+      NVIC_EnableIRQ(UART5_IRQn);
+
+      LL_USART_EnableIT_RXNE(UART5);
+      LL_USART_EnableIT_ERROR(UART5);
+
+      // Other stuff
+
+      // OLD
+//      osSemaphoreDef(esptxSemaphore);
+//      esptxSemaphoreHandle = osSemaphoreCreate(osSemaphore(esptxSemaphore), 1);
+//      osSemaphoreWait(esptxSemaphoreHandle, 0);
+//      osMutexDef(esptxMutex);
+//      esptxMutexHandle = osMutexCreate(osMutex(esptxMutex));
 
       esptxSemaphoreHandle = osSemaphoreNew(1, 1, &esptxSemaphore_attr);
       esptxMutexHandle = osMutexNew(&esptxMutex_attr);
 
       LL_USART_Enable(UART5);
+//
+//#if defined(OS_DEBUG)
+//      vQueueAddToRegistry(esptxSemaphoreHandle, "esptxSemaphore");
+//      vQueueAddToRegistry(esptxMutexHandle, "esptxMutex");
+//#endif /* defined(OS_DEBUG) */
+
     }
     else
     {
@@ -218,26 +234,21 @@ send_data(const void* data, size_t len) {
     if (esp8266_update) return (0);
     volatile uint8_t *buf;
     buf = (volatile uint8_t *) data;
-
+//    if (esp8266_debug)
+//    {
+//      Printf_LogCONT(CLR_MG"");
+//      for (uint8_t i = 0; i < len; i++)
+//        Printf_LogCONT("%c", buf[i]);
+//      Printf_LogCRLF(""CLR_DEF);
+//    }
     osMutexAcquire(esptxMutexHandle, osWaitForever);
-//    DMA_ConfigTxUART5(buf, len);
-//    LL_USART_EnableDMAReq_TX(UART5);
-//    LL_DMA_EnableIT_TC(DMA1, LL_DMA_STREAM_7);
-//    LL_DMA_EnableStream(DMA1, LL_DMA_STREAM_7);
-
-    PrintfLogsCont(CLR_MG"");
-    for (uint8_t i = 0; i < len; i++)
-      PrintfLogsCont("%c", buf[i]);
-    PrintfLogsCRLF(""CLR_DEF);
-//
-    while (!LL_USART_IsActiveFlag_TXE(UART5));
-    for (uint8_t i = 0; i < len; i++, buf++)
-    {
-      LL_USART_TransmitData8(UART5, *buf);
-      while (!LL_USART_IsActiveFlag_TXE(UART5));
-    }
-
-    //osSemaphoreAcquire(esptxSemaphoreHandle, osWaitForever);
+    osMutexAcquire(dma174_MutexHandle, osWaitForever);
+    DMA_ConfigTxUART5(buf, len);
+    LL_USART_EnableDMAReq_TX(UART5);
+    LL_DMA_EnableIT_TC(DMA1, LL_DMA_STREAM_7);
+    LL_DMA_EnableStream(DMA1, LL_DMA_STREAM_7);
+    osSemaphoreAcquire(esptxSemaphoreHandle, osWaitForever);
+    osMutexRelease(dma174_MutexHandle);
     osMutexRelease(esptxMutexHandle);
     return len;
 }
@@ -278,7 +289,6 @@ esp_ll_deinit(esp_ll_t* ll) {
     return espOK;
 }
 
-#if !ESP_USE_TX_RX_INTERRUPT
 void UART5_IRQHandler(void)
 {
   uint8_t errors = 0;
@@ -290,34 +300,22 @@ void UART5_IRQHandler(void)
     osSemaphoreRelease(esptxSemaphoreHandle);
   }
 
-  if (LL_USART_IsActiveFlag_ORE(UART5))
-  {
-    //Read DR register for ORE flag reset
-    LL_USART_ClearFlag_ORE(UART5);
-    ++errors;
-  }
   if (LL_USART_IsActiveFlag_FE(UART5))
   {
-    //Read DR register for FE flag reset
     LL_USART_ClearFlag_FE(UART5);
-    ++errors;
+    errors++;
   }
+
   if (LL_USART_IsActiveFlag_NE(UART5))
   {
-    //Read DR register for NE flag reset
     LL_USART_ClearFlag_NE(UART5);
-    ++errors;
+    errors++;
   }
 
-  if (errors != 0)
+  if (LL_USART_IsActiveFlag_ORE(UART5))
   {
-    uint8_t rx = LL_USART_ReceiveData8(UART5);
-    PROJ_UNUSED(rx);
-  }
-
-  if (LL_USART_IsActiveFlag_TXE(UART5))
-  {
-
+    LL_USART_ClearFlag_ORE(UART5);
+    errors++;
   }
 
   if (LL_USART_IsActiveFlag_RXNE(UART5))
@@ -337,72 +335,15 @@ void UART5_IRQHandler(void)
 #endif
     }
   }
-}
-#endif /* !ESP_USE_TX_RX_INTERRUPT */
-
-#if ESP_USE_TX_RX_INTERRUPT
-void UART5_IRQHandler(void)
-{
-  uint8_t errors = 0;
-
-  if (LL_USART_IsActiveFlag_RXNE(UART5) && LL_USART_IsEnabledIT_RXNE(UART5))
-  {
-    if (esp8266_update)
-      LL_USART_TransmitData8(UART4, LL_USART_ReceiveData8(UART5));
-    else
-    {
-      uint8_t rx = LL_USART_ReceiveData8(UART5);
-
-#if !ESP_CFG_INPUT_USE_PROCESS
-      esp_input(&rx, 1);
-#endif
-
-#if ESP_CFG_INPUT_USE_PROCESS
-      esp_input_process(&rx, 1);
-#endif
-    }
-  }
   else
   {
-    if (LL_USART_IsActiveFlag_ORE(UART5))
+    if (errors)
     {
-      //Read DR register for ORE flag reset
-      LL_USART_ClearFlag_ORE(UART5);
-      ++errors;
-    }
-    if (LL_USART_IsActiveFlag_FE(UART5))
-    {
-      //Read DR register for FE flag reset
-      LL_USART_ClearFlag_FE(UART5);
-      ++errors;
-    }
-    if (LL_USART_IsActiveFlag_NE(UART5))
-    {
-      //Read DR register for NE flag reset
-      LL_USART_ClearFlag_NE(UART5);
-      ++errors;
+      uint8_t rx = LL_USART_ReceiveData8(UART5);
+      PROJ_UNUSED(rx);
     }
   }
-
-//  if (LL_USART_IsActiveFlag_TC(UART5))
-//  {
-//    LL_USART_ClearFlag_TC(UART5);
-//    LL_USART_DisableIT_TC(UART5);
-//    osSemaphoreRelease(esptxSemaphoreHandle);
-//  }
-
-  if (errors != 0)
-  {
-    uint8_t rx = LL_USART_ReceiveData8(UART5);
-    PROJ_UNUSED(rx);
-  }
-
-//  if (LL_USART_IsActiveFlag_TXE(UART5))
-//  {
-//
-//  }
 }
-#endif /* !ESP_USE_TX_RX_INTERRUPT */
 
 #endif /* !DOXYGEN */
 
