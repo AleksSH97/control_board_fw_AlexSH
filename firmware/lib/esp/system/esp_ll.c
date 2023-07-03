@@ -121,7 +121,7 @@ usart_ll_thread(void* arg) {
     osMessageQueueGet(usart_ll_mbox_id, &d, NULL, osWaitForever);
 
     /* Read data */
-    pos = sizeof(usart_mem) - LL_DMA_GetDataLength(DMA1, LL_DMA_STREAM_7);
+    pos = sizeof(usart_mem) - LL_DMA_GetDataLength(DMA1, LL_DMA_STREAM_0);
     if (pos != old_pos && is_running) {
       if (pos > old_pos) {
         esp_input_process(&usart_mem[old_pos], pos - old_pos);
@@ -197,22 +197,24 @@ configure_uart(uint32_t baudrate) {
     USART_InitStruct.HardwareFlowControl = LL_USART_HWCONTROL_NONE;
     USART_InitStruct.OverSampling = LL_USART_OVERSAMPLING_16;
     LL_USART_Init(UART5, &USART_InitStruct);
+    LL_USART_DisableIT_CTS(UART5);
+    LL_USART_ConfigAsyncMode(UART5);
+
+    NVIC_SetPriority(UART5_IRQn, NVIC_EncodePriority(NVIC_GetPriorityGrouping(), 0x05, 0x00));
+    NVIC_EnableIRQ(UART5_IRQn);
 
     LL_USART_EnableIT_IDLE(UART5);
     LL_USART_EnableIT_PE(UART5);
     LL_USART_EnableIT_ERROR(UART5);
     LL_USART_EnableDMAReq_RX(UART5);
 
-    NVIC_SetPriority(UART5_IRQn, NVIC_EncodePriority(NVIC_GetPriorityGrouping(), 0x05, 0x00));
-    NVIC_EnableIRQ(UART5_IRQn);
-
     is_running = 0;
 
     LL_AHB1_GRP1_EnableClock(LL_AHB1_GRP1_PERIPH_DMA1);
     __DSB();
 
-    LL_DMA_DeInit(DMA1, LL_DMA_STREAM_7);
-    DMA_InitStruct.Channel = LL_DMA_CHANNEL_1;
+    LL_DMA_DeInit(DMA1, LL_DMA_STREAM_0);
+    DMA_InitStruct.Channel = LL_DMA_CHANNEL_4;
     DMA_InitStruct.PeriphOrM2MSrcAddress = (uint32_t)&UART5->DR;
     DMA_InitStruct.MemoryOrM2MDstAddress = (uint32_t)usart_mem;
     DMA_InitStruct.Direction = LL_DMA_DIRECTION_PERIPH_TO_MEMORY;
@@ -222,25 +224,27 @@ configure_uart(uint32_t baudrate) {
     DMA_InitStruct.PeriphOrM2MSrcDataSize = LL_DMA_PDATAALIGN_BYTE;
     DMA_InitStruct.MemoryOrM2MDstDataSize = LL_DMA_MDATAALIGN_BYTE;
     DMA_InitStruct.NbData = sizeof(usart_mem);
-    DMA_InitStruct.Priority = LL_DMA_PRIORITY_MEDIUM;
+    DMA_InitStruct.Priority = LL_DMA_PRIORITY_HIGH;
 
-//    LL_DMA_SetChannelSelection(DMA1, LL_DMA_STREAM_7, LL_DMA_CHANNEL_1);
-//    LL_DMA_ConfigTransfer(DMA1, LL_DMA_STREAM_7,
-//                          LL_DMA_DIRECTION_MEMORY_TO_PERIPH |
+//    LL_DMA_SetChannelSelection(DMA1, LL_DMA_STREAM_0, LL_DMA_CHANNEL_4);
+//    LL_DMA_ConfigTransfer(DMA1, LL_DMA_STREAM_0,
+//                          LL_DMA_DIRECTION_PERIPH_TO_MEMORY |
 //                          LL_DMA_PRIORITY_HIGH              |
-//                          LL_DMA_MODE_NORMAL                |
+//                          LL_DMA_MODE_CIRCULAR              |
 //                          LL_DMA_PERIPH_NOINCREMENT         |
 //                          LL_DMA_MEMORY_INCREMENT           |
 //                          LL_DMA_PDATAALIGN_BYTE            |
 //                          LL_DMA_MDATAALIGN_BYTE);
+//    LL_DMA_SetMemoryAddress(DMA1, LL_DMA_STREAM_0, (uint32_t)usart_mem);
+//    LL_DMA_SetPeriphAddress(DMA1, LL_DMA_STREAM_0, (uint32_t)&UART5->DR);
 
-    LL_DMA_Init(DMA1, LL_DMA_STREAM_7, &DMA_InitStruct);
+    LL_DMA_Init(DMA1, LL_DMA_STREAM_0, &DMA_InitStruct);
 
-    LL_DMA_EnableIT_HT(DMA1, LL_DMA_STREAM_7);
-    LL_DMA_EnableIT_TC(DMA1, LL_DMA_STREAM_7);
-    LL_DMA_EnableIT_TE(DMA1, LL_DMA_STREAM_7);
-    LL_DMA_EnableIT_FE(DMA1, LL_DMA_STREAM_7);
-    LL_DMA_EnableIT_DME(DMA1, LL_DMA_STREAM_7);
+    LL_DMA_EnableIT_HT(DMA1, LL_DMA_STREAM_0);
+    LL_DMA_EnableIT_TC(DMA1, LL_DMA_STREAM_0);
+    LL_DMA_EnableIT_TE(DMA1, LL_DMA_STREAM_0);
+    LL_DMA_EnableIT_FE(DMA1, LL_DMA_STREAM_0);
+    LL_DMA_EnableIT_DME(DMA1, LL_DMA_STREAM_0);
 
     NVIC_SetPriority(DMA1_Stream7_IRQn, NVIC_EncodePriority(NVIC_GetPriorityGrouping(), 0x05, 0x00));
     NVIC_EnableIRQ(DMA1_Stream7_IRQn);
@@ -248,13 +252,8 @@ configure_uart(uint32_t baudrate) {
     old_pos = 0;
     is_running = 1;
 
-    LL_DMA_EnableStream(DMA1, LL_DMA_STREAM_7);
+    LL_DMA_EnableStream(DMA1, LL_DMA_STREAM_0);
     LL_USART_Enable(UART5);
-
-
-//    esptxSemaphoreHandle = osSemaphoreNew(1, 1, &esptxSemaphore_attr);
-//    osSemaphoreAcquire(esptxSemaphoreHandle, 0);
-//    esptxMutexHandle = osMutexNew(&esptxMutex_attr);
   }
   else
   {
@@ -341,8 +340,8 @@ static size_t send_data(const void* data, size_t len)
 //  osMutexAcquire(dma174_MutexHandle, osWaitForever);
 //  DMA_ConfigTxUART5(buf, len);
 //  LL_USART_EnableDMAReq_TX(UART5);
-//  LL_DMA_EnableIT_TC(DMA1, LL_DMA_STREAM_7);
-//  LL_DMA_EnableStream(DMA1, LL_DMA_STREAM_7);
+//  LL_DMA_EnableIT_TC(DMA1, LL_DMA_STREAM_0);
+//  LL_DMA_EnableStream(DMA1, LL_DMA_STREAM_0);
 //  osSemaphoreAcquire(esptxSemaphoreHandle, osWaitForever);
 //  osMutexRelease(dma174_MutexHandle);
 //  osMutexRelease(esptxMutexHandle);
@@ -478,7 +477,7 @@ void UART5_IRQHandler(void)
 /**
  * \brief           UART DMA stream/channel handler
  */
-void DMA1_Stream7_IRQHandler(void)
+void DMA1_Stream0_IRQHandler(void)
 {
   LL_DMA_ClearFlag_TC7(DMA1);
   LL_DMA_ClearFlag_HT7(DMA1);
