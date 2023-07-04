@@ -44,8 +44,24 @@
 /******************************************************************************/
 volatile bool i2c1_dma_tx;
 
-osSemaphoreId dma174_TxSemaphoreHandle;
-osMutexId dma174_MutexHandle;
+osSemaphoreId_t dma174_TxSemaphoreHandle;
+osMutexId_t dma174_MutexHandle;
+
+const osSemaphoreAttr_t dma174Semaphore_attr =
+{
+    .name = "dma174Semaphore",
+    .attr_bits = 0U,
+    .cb_mem = NULL,
+    .cb_size = 0U
+};
+
+const osMutexAttr_t dma174Mutex_attr =
+{
+  .name = "dma174Mutex",
+  .attr_bits = osMutexRecursive,
+  .cb_mem = NULL,
+  .cb_size = 0U
+};
 
 
 /******************************************************************************/
@@ -79,11 +95,9 @@ void DMA_Init174(void)
 
   i2c1_dma_tx = false;
 
-  osMutexDef(dma174_Mutex);
-  dma174_MutexHandle = osMutexCreate(osMutex(dma174_Mutex));
+  dma174_MutexHandle = osMutexNew(&dma174Mutex_attr);
+  dma174_TxSemaphoreHandle = osSemaphoreNew(1, 1, &dma174Semaphore_attr);
 
-  osSemaphoreDef(dma174_TxSemaphore);
-  dma174_TxSemaphoreHandle = osSemaphoreCreate(osSemaphore(dma174_TxSemaphore), 1);
 //  osSemaphoreWait(dma174_TxSemaphoreHandle, 0);
 
 #if defined(OS_DEBUG)
@@ -127,36 +141,36 @@ void DMA_ConfigTxUART5(volatile void *buf, uint16_t len)
 
 
 
-void DMA1_Stream7_IRQHandler(void)
-{
-  LL_DMA_ClearFlag_TC7(DMA1);
-  if (i2c1_dma_tx)
-  {
-    if (i2c1_address_sended)
-      LL_I2C_DisableDMAReq_TX(I2C1);
-    else
-    {
-      if (i2c1_mode_write)
-      {
-        LL_DMA_DisableStream(DMA1, LL_DMA_STREAM_7);
-        DMA_ConfigTxI2C1((void *) i2c1_buffer, i2c1_length);
-      }
-      else
-      {
-        i2c1_repeated_start = true;
-        LL_I2C_DisableDMAReq_TX(I2C1);
-        LL_DMA_DisableStream(DMA1, LL_DMA_STREAM_7);
-        LL_DMA_DisableIT_TC(DMA1, LL_DMA_STREAM_7);
-        LL_I2C_GenerateStartCondition(I2C1);
-      }
-    }
-  }
-  else
-  {
-    LL_USART_DisableDMAReq_TX(UART5);
-    LL_DMA_DisableStream(DMA1, LL_DMA_STREAM_7);
-    LL_DMA_DisableIT_TC(DMA1, LL_DMA_STREAM_7);
-    LL_USART_EnableIT_TC(UART5);
-  }
-}
+//void DMA1_Stream7_IRQHandler(void)
+//{
+//  LL_DMA_ClearFlag_TC7(DMA1);
+//  if (i2c1_dma_tx)
+//  {
+//    if (i2c1_address_sended)
+//      LL_I2C_DisableDMAReq_TX(I2C1);
+//    else
+//    {
+//      if (i2c1_mode_write)
+//      {
+//        LL_DMA_DisableStream(DMA1, LL_DMA_STREAM_7);
+//        DMA_ConfigTxI2C1((void *) i2c1_buffer, i2c1_length);
+//      }
+//      else
+//      {
+//        i2c1_repeated_start = true;
+//        LL_I2C_DisableDMAReq_TX(I2C1);
+//        LL_DMA_DisableStream(DMA1, LL_DMA_STREAM_7);
+//        LL_DMA_DisableIT_TC(DMA1, LL_DMA_STREAM_7);
+//        LL_I2C_GenerateStartCondition(I2C1);
+//      }
+//    }
+//  }
+//  else
+//  {
+//    LL_USART_DisableDMAReq_TX(UART5);
+//    LL_DMA_DisableStream(DMA1, LL_DMA_STREAM_7);
+//    LL_DMA_DisableIT_TC(DMA1, LL_DMA_STREAM_7);
+//    LL_USART_EnableIT_TC(UART5);
+//  }
+//}
 /******************************************************************************/
