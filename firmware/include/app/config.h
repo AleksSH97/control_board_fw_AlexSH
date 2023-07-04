@@ -24,13 +24,6 @@
 #include <stdio.h>
 #include <stdbool.h>
 
-#include "FreeRTOS.h"
-#include "task.h"
-#include "cmsis_os.h"
-#include "cmsis_os2.h"
-
-#include "log.h"
-
 #ifdef __cplusplus
 extern "C" {
 #endif /* __cplusplus */
@@ -216,7 +209,7 @@ extern ESS_CONFIG init_config;
 /******************************************************************************/
 /* Public functions --------------------------------------------------------- */
 /******************************************************************************/
-
+void ConfigInit(void);
 
 /******************************************************************************/
 

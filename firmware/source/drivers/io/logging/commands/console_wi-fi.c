@@ -15,6 +15,7 @@
 #include "console_wi-fi.h"
 
 #include "console.h"
+#include "config.h"
 #if    !WIFI_USE_LWESP
 #include "esp/system/esp_ll.h"
 #include "esp/esp_sta.h"
@@ -91,6 +92,53 @@ int ConsoleWiFi(microrl_t *microrl_ptr, int argc, const char * const *argv)
       PrintfConsoleCRLF("\tINIT WIFI");
       WiFiInit();
     }
+    else if (strcmp(argv[i], "ssid") == CONSOLE_MATCH)
+    {
+      if (++i < argc)
+      {
+        if (strlen(argv[i]) > 20)
+        {
+          PrintfConsoleCRLF(CLR_RD"\tToo big ssid name!"CLR_DEF);
+          ConsoleError();
+        }
+        else
+        {
+          char buf[32];
+          memcpy(buf, argv[i], 32);
+          for (uint8_t i = 0; i < 32; i++)
+          {
+            config.wifi.ssid[i] = buf[i];
+          }
+          PrintfConsoleCRLF(CLR_DEF"\tNew ssid:" CLR_GR"%s"CLR_DEF, config.wifi.ssid);
+        }
+      }
+    }
+    else if (strcmp(argv[i], "password") == CONSOLE_MATCH)
+    {
+      if (++i < argc)
+      {
+        if (strlen(argv[i]) > 20)
+        {
+          PrintfConsoleCRLF(CLR_RD"\tToo big password!"CLR_DEF);
+          ConsoleError();
+        }
+        else
+        {
+          char buf[32];
+          memcpy(buf, argv[i], 32);
+          for (uint8_t i = 0; i < 32; i++)
+          {
+            config.wifi.passw[i] = buf[i];
+          }
+          PrintfConsoleCRLF(CLR_DEF"\tNew password:" CLR_GR"%s"CLR_DEF, config.wifi.passw);
+        }
+      }
+    }
+    else if (strcmp(argv[i], "configs") == CONSOLE_MATCH)
+    {
+      PrintfConsoleCRLF(CLR_DEF"\tSSID:" CLR_GR"%s"CLR_DEF, config.wifi.ssid);
+      PrintfConsoleCRLF(CLR_DEF"\tPASSWORD" CLR_GR"%s"CLR_DEF, config.wifi.passw);
+    }
     else if (strcmp(argv[i], "version") == CONSOLE_MATCH)
     {
       PrintfConsoleCRLF("\t"CLR_YL"ESP8266 AT  v%u.%u.%u"CLR_DEF, esp.m.version_at.major, esp.m.version_at.minor, esp.m.version_at.patch);
@@ -129,6 +177,9 @@ void Console_WIFiPrintMenu(void)
   PrintfConsoleCRLF("\tupdate             -  update ESP");
   PrintfConsoleCRLF("\tinit               -  init ESP");
   PrintfConsoleCRLF("\tversion            -  check current version");
+  PrintfConsoleCRLF("\tssid               -  change wifi ssid");
+  PrintfConsoleCRLF("\tpassword           -  change wifi password");
+  PrintfConsoleCRLF("\tconfigs            -  check ssid and passw");
   PrintfConsoleCRLF("\tback               -  back to main menu");
   PrintfConsoleCRLF("");
 }
