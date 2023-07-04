@@ -30,6 +30,9 @@
  *
  * Author:          Tilen MAJERLE <tilen@majerle.eu>
  */
+
+#include "log.h"
+
 #ifndef ESP_HDR_DEFAULT_CONFIG_H
 #define ESP_HDR_DEFAULT_CONFIG_H
 
@@ -78,7 +81,7 @@
  * Parameter can be a value of \ref ESP_SYS_PORTS choices
  */
 #ifndef ESP_CFG_SYS_PORT
-#define ESP_CFG_SYS_PORT                    ESP_SYS_PORT_CMSIS_OS
+#define ESP_CFG_SYS_PORT                    ESP_SYS_PORT_CMSIS_OS2
 #endif
 
 /**
@@ -212,7 +215,7 @@
  *                  reset sequence to ESP device.
  */
 #ifndef ESP_CFG_RESET_ON_INIT
-#define ESP_CFG_RESET_ON_INIT               1
+#define ESP_CFG_RESET_ON_INIT               0
 #endif
 
 /**
@@ -275,7 +278,7 @@
  * Called with format and optional parameters for printf-like debug
  */
 #ifndef ESP_CFG_DBG_OUT
-#define ESP_CFG_DBG_OUT(fmt, ...)           do { extern int printf( const char * format, ... ); printf(fmt, ## __VA_ARGS__); } while (0)
+#define ESP_CFG_DBG_OUT(fmt, ...)           do { extern int PrintfLogs( const char * format, ... ); PrintfLogs(fmt, ## __VA_ARGS__); } while (0)
 #endif
 
 /**
@@ -296,7 +299,7 @@
  * Check \ref ESP_DBG_TYPE for possible options. Separate values with `bitwise OR` operator
  */
 #ifndef ESP_CFG_DBG_TYPES_ON
-#define ESP_CFG_DBG_TYPES_ON                0
+#define ESP_CFG_DBG_TYPES_ON                1
 #endif
 
 /**
@@ -305,7 +308,7 @@
  * Possible values are \ref ESP_DBG_ON or \ref ESP_DBG_OFF
  */
 #ifndef ESP_CFG_DBG_INIT
-#define ESP_CFG_DBG_INIT                    ESP_DBG_OFF
+#define ESP_CFG_DBG_INIT                    ESP_DBG_ON
 #endif
 
 /**
@@ -314,7 +317,7 @@
  * Possible values are \ref ESP_DBG_ON or \ref ESP_DBG_OFF
  */
 #ifndef ESP_CFG_DBG_MEM
-#define ESP_CFG_DBG_MEM                     ESP_DBG_OFF
+#define ESP_CFG_DBG_MEM                     ESP_DBG_ON
 #endif
 
 /**
@@ -323,7 +326,7 @@
  * Possible values are \ref ESP_DBG_ON or \ref ESP_DBG_OFF
  */
 #ifndef ESP_CFG_DBG_INPUT
-#define ESP_CFG_DBG_INPUT                   ESP_DBG_OFF
+#define ESP_CFG_DBG_INPUT                   ESP_DBG_ON
 #endif
 
 /**
@@ -332,7 +335,7 @@
  * Possible values are \ref ESP_DBG_ON or \ref ESP_DBG_OFF
  */
 #ifndef ESP_CFG_DBG_THREAD
-#define ESP_CFG_DBG_THREAD                  ESP_DBG_OFF
+#define ESP_CFG_DBG_THREAD                  ESP_DBG_ON
 #endif
 
 /**
@@ -341,7 +344,7 @@
  * Possible values are \ref ESP_DBG_ON or \ref ESP_DBG_OFF
  */
 #ifndef ESP_CFG_DBG_ASSERT
-#define ESP_CFG_DBG_ASSERT                  ESP_DBG_OFF
+#define ESP_CFG_DBG_ASSERT                  ESP_DBG_ON
 #endif
 
 /**
@@ -386,7 +389,7 @@
  *                  Possible values are \ref ESP_DBG_ON or \ref ESP_DBG_OFF
  */
 #ifndef ESP_CFG_DBG_VAR
-#define ESP_CFG_DBG_VAR                     ESP_DBG_OFF
+#define ESP_CFG_DBG_VAR                     ESP_DBG_ON
 #endif
 
 /**
@@ -445,7 +448,7 @@
  * \note            Best case for using this mode is if DMA receive is supported by host device
  */
 #ifndef ESP_CFG_INPUT_USE_PROCESS
-#define ESP_CFG_INPUT_USE_PROCESS           0
+#define ESP_CFG_INPUT_USE_PROCESS           1
 #endif
 
 /**
