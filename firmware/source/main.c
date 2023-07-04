@@ -33,14 +33,14 @@
 #include "wi-fi.h"
 #include "rtc_i2c.h"
 #include "log.h"
+#include "config.h"
 
 #include "lwprintf/lwprintf.h"
 #include "console.h"
 #include "lwrb.h"
 
-#include "cmsis_os.h"
-#include "cmsis_os2.h"
 #include "FreeRTOS.h"
+#include "cmsis_os.h"
 
 
 /******************************************************************************/
@@ -81,13 +81,14 @@ int main(void)
  */
 void prvInitializeMCU(void)
 {
-  HAL_Init();
+//  HAL_Init();
   prvSystemHandlerControlConfig();
   prvSystemClockConfig();
   prvGPIOConfig();
   IndicationInit();
   IoSystemInit();
   RtcInitTask();
+  ConfigInit();
 }
 /******************************************************************************/
 
@@ -269,15 +270,19 @@ void DebugMon_Handler(void)
  */
 void SysTick_Handler(void)
 {
+  /* Clear overflow flag */
+//  SysTick->CTRL;
+  /* Check leds status */
   IndicationLedsUpdate();
-#if (INCLUDE_xTaskGetSchedulerState  == 1 )
-  if (xTaskGetSchedulerState() != taskSCHEDULER_NOT_STARTED)
-  {
-#endif  /* INCLUDE_xTaskGetSchedulerState */
+
+#if (INCLUDE_xTaskGetSchedulerState == 1 )
+if (xTaskGetSchedulerState() != taskSCHEDULER_NOT_STARTED)
+{
+#endif /* INCLUDE_xTaskGetSchedulerState */
   xPortSysTickHandler();
-#if (INCLUDE_xTaskGetSchedulerState  == 1 )
-  }
-#endif  /* INCLUDE_xTaskGetSchedulerState */
+#if (INCLUDE_xTaskGetSchedulerState == 1 )
+}
+#endif /* INCLUDE_xTaskGetSchedulerState */
 }
 /******************************************************************************/
 
