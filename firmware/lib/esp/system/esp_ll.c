@@ -109,27 +109,36 @@ static size_t old_pos;
 /**
  * \brief           USART data processing
  */
-static void
-usart_ll_thread(void* arg) {
+static void usart_ll_thread(void* arg)
+{
   size_t pos;
 
   ESP_UNUSED(arg);
 
   for (;;)
   {
+    if (esp8266_update)
+      continue;
+
     void* d;
+
     /* Wait for the event message from DMA or USART */
     osMessageQueueGet(usart_ll_mbox_id, &d, NULL, osWaitForever);
 
     /* Read data */
     pos = sizeof(usart_mem) - LL_DMA_GetDataLength(DMA1, LL_DMA_STREAM_0);
+
     if (pos != old_pos && is_running) {
-      if (pos > old_pos) {
+      if (pos > old_pos)
+      {
         esp_input_process(&usart_mem[old_pos], pos - old_pos);
-      } else {
+      }
+      else
+      {
         esp_input_process(&usart_mem[old_pos], sizeof(usart_mem) - old_pos);
-        if (pos > 0) {
-            esp_input_process(&usart_mem[0], pos);
+        if (pos > 0)
+        {
+          esp_input_process(&usart_mem[0], pos);
         }
       }
       old_pos = pos;
@@ -141,9 +150,8 @@ usart_ll_thread(void* arg) {
 /**
  * \brief           Configure UART using DMA for receive in double buffer mode and IDLE line detection
  */
-void
-configure_uart(uint32_t baudrate) {
-
+void configure_uart(uint32_t baudrate)
+{
   static LL_USART_InitTypeDef USART_InitStruct;
   static LL_DMA_InitTypeDef DMA_InitStruct;
   LL_GPIO_InitTypeDef GPIO_InitStruct;
@@ -253,20 +261,23 @@ configure_uart(uint32_t baudrate) {
     LL_USART_Enable(UART5);
   }
 
-  if (usart_ll_mbox_id == NULL) {
+  if (usart_ll_mbox_id == NULL)
+  {
     usart_ll_mbox_id = osMessageQueueNew(10, sizeof(void*), NULL);
   }
-  if (usart_ll_thread_id == NULL) {
+  if (usart_ll_thread_id == NULL)
+  {
     const osThreadAttr_t attr = {.stack_size = 1024};
     usart_ll_thread_id = osThreadNew(usart_ll_thread, usart_ll_mbox_id, &attr);
   }
 
-    /*
-     * Force ESP hardware reset
-     * after initialization to make sure device is ready and
-     * not in undefined state from previous AT usage
-     */
-  if (!initialized) {
+/*
+ * Force ESP hardware reset
+ * after initialization to make sure device is ready and
+ * not in undefined state from previous AT usage
+ */
+  if (!initialized)
+  {
 //KT2(ON);
     LL_GPIO_ResetOutputPin(ESP_RST_GPIO_Port, ESP_RST_Pin);
     osDelay(100);
@@ -284,56 +295,15 @@ configure_uart(uint32_t baudrate) {
  */
 static size_t send_data(const void* data, size_t len)
 {
-  if (!esp8266_update)
-  {
-    const uint8_t* d = data;
-
-//    PrintfLogsCont(CLR_MG"");
-//    for (uint8_t i = 0; i < len; i++)
-//    {
-//      PrintfLogsCont("%c", d[i]);
-//    }
-//    PrintfLogsCRLF(""CLR_DEF);
-
-    for (size_t i = 0; i < len; ++i, ++d)
-    {
-      LL_USART_TransmitData8(UART5, *d);
-      while (!LL_USART_IsActiveFlag_TXE(UART5)) {}
-    }
-    return len;
-  }
-
   if (esp8266_update)
     return (0);
 
-//    osMutexAcquire(esptxMutexHandle, osWaitForever);
-//  volatile uint8_t *buf;
-//  buf = (volatile uint8_t *) data;
-//
-//  PrintfLogsCont(CLR_MG"");
-//  for (uint8_t i = 0; i < len; i++)
-//  {
-//    PrintfLogsCont("%c", buf[i]);
-//  }
-//  PrintfLogsCRLF(""CLR_DEF);
-//
-//  for (uint8_t i = 0; i < len; ++i, ++buf)
-//  {
-//    LL_USART_TransmitData8(UART5, *buf);
-//    while (!LL_USART_IsActiveFlag_TXE(UART5)) {}
-//  }
-//
-//  osSemaphoreAcquire(esptxSemaphoreHandle, osWaitForever);
-//  osMutexRelease(esptxMutexHandle);
-//  osMutexAcquire(esptxMutexHandle, osWaitForever);
-//  osMutexAcquire(dma174_MutexHandle, osWaitForever);
-//  DMA_ConfigTxUART5(buf, len);
-//  LL_USART_EnableDMAReq_TX(UART5);
-//  LL_DMA_EnableIT_TC(DMA1, LL_DMA_STREAM_0);
-//  LL_DMA_EnableStream(DMA1, LL_DMA_STREAM_0);
-//  osSemaphoreAcquire(esptxSemaphoreHandle, osWaitForever);
-//  osMutexRelease(dma174_MutexHandle);
-//  osMutexRelease(esptxMutexHandle);
+  const uint8_t* d = data;
+  for (size_t i = 0; i < len; ++i, ++d)
+  {
+    LL_USART_TransmitData8(UART5, *d);
+    while (!LL_USART_IsActiveFlag_TXE(UART5)) {}
+  }
   return len;
 }
 
@@ -455,10 +425,13 @@ void UART5_IRQHandler(void)
   LL_USART_ClearFlag_NE(UART5);
   IndicationLedYellowBlink(3);
 
+  if (esp8266_update)
+    LL_USART_TransmitData8(UART4, LL_USART_ReceiveData8(UART5));
+
   if (usart_ll_mbox_id != NULL)
   {
-      void* d = (void*)1;
-      osMessageQueuePut(usart_ll_mbox_id, &d, 0, 0);
+    void* d = (void*)1;
+    osMessageQueuePut(usart_ll_mbox_id, &d, 0, 0);
   }
 }
 
@@ -472,10 +445,13 @@ void DMA1_Stream0_IRQHandler(void)
   LL_DMA_ClearFlag_HT7(DMA1);
   IndicationLedGreenBlink(3);
 
+  if (esp8266_update)
+    LL_USART_TransmitData8(UART4, LL_USART_ReceiveData8(UART5));
+
   if (usart_ll_mbox_id != NULL)
   {
-      void* d = (void*)1;
-      osMessageQueuePut(usart_ll_mbox_id, &d, 0, 0);
+    void* d = (void*)1;
+    osMessageQueuePut(usart_ll_mbox_id, &d, 0, 0);
   }
 }
 #endif /* !ESP_USE_TX_RX_INTERRUPT */
