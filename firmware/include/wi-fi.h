@@ -71,8 +71,6 @@ typedef enum
 uint8_t WiFiSetError(WIFI_ERROR_t error);
 uint8_t WiFiGetError(void);
 
-uint8_t prvWiFiResetWithDelay(void);
-
 void WiFiErrorHandler(WIFI_ERROR_t error);
 void WiFiStop(void);
 void WiFiGetMac(void);
