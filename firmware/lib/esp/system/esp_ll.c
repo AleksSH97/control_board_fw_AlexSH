@@ -105,6 +105,7 @@ static size_t old_pos;
 
 /******************************************************************************/
 
+
 /**
  * \brief           USART data processing
  */
@@ -225,18 +226,6 @@ configure_uart(uint32_t baudrate) {
     DMA_InitStruct.MemoryOrM2MDstDataSize = LL_DMA_MDATAALIGN_BYTE;
     DMA_InitStruct.NbData = sizeof(usart_mem);
     DMA_InitStruct.Priority = LL_DMA_PRIORITY_HIGH;
-
-//    LL_DMA_SetChannelSelection(DMA1, LL_DMA_STREAM_0, LL_DMA_CHANNEL_4);
-//    LL_DMA_ConfigTransfer(DMA1, LL_DMA_STREAM_0,
-//                          LL_DMA_DIRECTION_PERIPH_TO_MEMORY |
-//                          LL_DMA_PRIORITY_HIGH              |
-//                          LL_DMA_MODE_CIRCULAR              |
-//                          LL_DMA_PERIPH_NOINCREMENT         |
-//                          LL_DMA_MEMORY_INCREMENT           |
-//                          LL_DMA_PDATAALIGN_BYTE            |
-//                          LL_DMA_MDATAALIGN_BYTE);
-//    LL_DMA_SetMemoryAddress(DMA1, LL_DMA_STREAM_0, (uint32_t)usart_mem);
-//    LL_DMA_SetPeriphAddress(DMA1, LL_DMA_STREAM_0, (uint32_t)&UART5->DR);
 
     LL_DMA_Init(DMA1, LL_DMA_STREAM_0, &DMA_InitStruct);
 
