@@ -120,6 +120,9 @@ void UART4_IRQHandler(void)
     PROJ_UNUSED(rx);
   }
 
+  if (esp8266_update)
+    LL_USART_TransmitData8(UART5, LL_USART_ReceiveData8(IOUART_Periph));
+
   //Check for READ DATA REGISTER NOT EMPTY flag and enabled IT for RXNE
   if ((LL_USART_IsActiveFlag_RXNE(IOUART_Periph)))
     UARTCallback(IOUART_Periph, &io_uart);
