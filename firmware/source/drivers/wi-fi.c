@@ -117,9 +117,9 @@ static WIFI_DATA_t wifi;
 /******************************************************************************/
 /* Private function prototypes ---------------------------------------------- */
 /******************************************************************************/
-//uint8_t prvWiFiResetWithDelay(void);
+uint8_t prvWiFiResetWithDelay(void);
 uint8_t prvWiFiSetMode(uint8_t mode);
-uint8_t prvWiFiListAp(esp_ap_t *access_point, size_t *access_point_find);
+uint8_t prvWiFiListAp(esp_ap_t *access_point, size_t *access_point_find, size_t apsl);
 uint8_t prvWiFiAccessPointsFound(size_t access_point_find, esp_ap_t *access_point, bool *config_ap_found);
 uint8_t prvWiFiStaJoin(void);
 uint8_t prvWiFiCopyIp(esp_ip_t *ip);
@@ -128,7 +128,7 @@ uint8_t prvWiFiPing(void);
 uint8_t prvWiFiParseIp(const char **str, esp_ip_t *ip);
 uint8_t prvWiFiSetIp(esp_ip_t *ip, esp_ip_t *gw, esp_ip_t *nm);
 uint8_t prvWiFiApConfigure(const char *ssid, const char *password, uint8_t channel, esp_ecn_t encryption, uint8_t max_stations, uint8_t hide, uint8_t def, const esp_api_cmd_evt_fn evt_fn, void *const evt_argument, const uint32_t blocking);
-uint8_t prvWiFiApListSta(esp_sta_t *stations, size_t *stations_quantity, const uint32_t blocking);
+uint8_t prvWiFiApListSta(esp_sta_t *stations, size_t *stations_quantity, const uint32_t blocking, size_t stal);
 uint8_t prvWiFiConnectionNew(WIFI_DATA_t *wifi);
 uint8_t prvWiFiBindConnection(esp_netconn_p netconnection_server, uint16_t port);
 uint8_t prvWiFiListenConnection(esp_netconn_p netconnection_server);
@@ -209,7 +209,6 @@ uint8_t WiFiStart(bool mode_ap)
   }
   else if (mode_ap == WIFI_MODE_ST)
   {
-    PrintfLogsCRLF(CLR_DEF"WI-FI MODE ST"CLR_DEF);
     WiFiStTaskHandle = osThreadNew(WiFiStTask, NULL, &WifiStTask_attributes);
     if (WiFiStTaskHandle == NULL)
       return WIFI_START_ERROR;
@@ -317,7 +316,7 @@ void WiFiApTask(void *argument)
     if (res != espOK)
       continue;
 
-    res = prvWiFiApListSta(stations, &stations_quantity, WIFI_BLOCKING);
+    res = prvWiFiApListSta(stations, &stations_quantity, WIFI_BLOCKING, ESP_ARRAYSIZE(stations));
 
     if (res != espOK)
       continue;
@@ -452,7 +451,7 @@ void WiFiStTask(void *argument)
       PrintfLogsCRLF("WiFi Access points scanning ...");
       IndicationLedYellowBlink(5);
 
-      res = prvWiFiListAp(access_point, &access_point_find);
+      res = prvWiFiListAp(access_point, &access_point_find, ESP_ARRAYSIZE(access_point));
 
       if (res != espOK)
         continue;
@@ -1104,11 +1103,11 @@ uint8_t prvWiFiSetMode(uint8_t mode)
  * @brief          Wi-Fi ST_mode list of access points
  * @return         Current espr_t struct state
  */
-uint8_t prvWiFiListAp(esp_ap_t *access_point, size_t *access_point_find)
+uint8_t prvWiFiListAp(esp_ap_t *access_point, size_t *access_point_find, size_t apsl)
 {
   uint8_t res = espOK;
-  res = esp_sta_list_ap(NULL, access_point, ESP_ARRAYSIZE(access_point),
-      access_point_find, NULL, NULL, 1);
+
+  res = esp_sta_list_ap(NULL, access_point, apsl, access_point_find, NULL, NULL, 1);
 
   PrintfLogsCRLF(CLR_DEF"WiFi Access point scan: (%s)"CLR_DEF, ESPErrorHandler(res));
 
@@ -1295,11 +1294,11 @@ uint8_t prvWiFiApConfigure(const char *ssid, const char *password, uint8_t chann
  * @brief          Wi-Fi list of stations connected to access point
  * @return         Current espr_t struct state
  */
-uint8_t prvWiFiApListSta(esp_sta_t *stations, size_t *stations_quantity, const uint32_t blocking)
+uint8_t prvWiFiApListSta(esp_sta_t *stations, size_t *stations_quantity, const uint32_t blocking, size_t stal)
 {
   uint8_t res = espOK;
 
-  res = esp_ap_list_sta(stations, ESP_ARRAYSIZE(stations), stations_quantity, NULL, NULL, blocking);
+  res = esp_ap_list_sta(stations, stal, stations_quantity, NULL, NULL, blocking);
   PrintfLogsCRLF(CLR_DEF"WiFi station scan (%s)"CLR_DEF, ESPErrorHandler(res));
 
   return res;
@@ -1574,14 +1573,14 @@ espr_t esp_callback_function(esp_evt_t* event)
         PrintfLogsCRLF(CLR_GR"WiFi AP got IP"CLR_DEF);
         break;
       }
-//      case ESP_EVT_WIFI_DISCONNECTED:
-//      {
-//        PrintfLogsCRLF(CLR_RD"WiFi AP disconnected!"CLR_DEF);
-//        wifi.host_connected = false;
+      case ESP_EVT_WIFI_DISCONNECTED:
+      {
+        PrintfLogsCRLF(CLR_RD"WiFi AP disconnected!"CLR_DEF);
+        wifi.host_connected = false;
 //        if (mqtt_wifi_transport)
 //          MQTTClient_Stop();
-//        break;
-//      }
+        break;
+      }
       case ESP_EVT_WIFI_IP_ACQUIRED:
       {
         PrintfLogsCRLF(CLR_GR"WiFi AP IP acquired"CLR_DEF);
