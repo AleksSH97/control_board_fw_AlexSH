@@ -239,7 +239,7 @@ esp_evt(esp_evt_t* evt) {
             }
             break;
         }
-        case ESP_EVT_DEVICE_PRESENT: {          /* Device present event */
+        case ESP_EVT_DEVICE_PRESENT: {          /* Device present event */ // @suppress("No break at end of case")
             if (listen_api != NULL && !esp_device_is_present()) {   /* Check if device present */
                 esp_sys_mbox_putnow(&listen_api->mbox_accept, &recv_not_present);
             }

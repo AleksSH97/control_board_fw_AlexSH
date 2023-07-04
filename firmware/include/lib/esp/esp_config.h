@@ -50,7 +50,7 @@
 
 #define ESP_CFG_DBG                         ESP_DBG_OFF
 
-#define ESP_CFG_INPUT_USE_PROCESS           0
+#define ESP_CFG_INPUT_USE_PROCESS           1
 
 #define ESP_CFG_MAX_SSID_LENGTH             32
 #define ESP_CFG_MAX_PWD_LENGTH              32
