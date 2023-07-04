@@ -15,6 +15,12 @@
 /******************************************************************************/
 #include "config.h"
 
+#include "FreeRTOS.h"
+#include "task.h"
+#include "cmsis_os.h"
+#include "cmsis_os2.h"
+
+#include "log.h"
 
 /******************************************************************************/
 /* Private defines ---------------------------------------------------------- */
@@ -85,6 +91,12 @@ CONFIG_INIT_RESULT init_result;
 /******************************************************************************/
 
 
+void ConfigInit(void)
+{
+  config = init_config;
+  PrintfLogsCRLF("WiFi ssid: (%s)", config.wifi.ssid);
+  PrintfLogsCRLF("WiFi passw: (%s)", config.wifi.passw);
+}
 
 
 
