@@ -1565,7 +1565,7 @@ espr_t esp_callback_function(esp_evt_t* event)
       case ESP_EVT_WIFI_CONNECTED:
       {
         PrintfLogsCRLF(CLR_GR"WiFi AP connected OK"CLR_DEF);
-        //wifi.sta_ready = true;
+        wifi.sta_ready = true;
         break;
       }
       case ESP_EVT_WIFI_GOT_IP:
@@ -1631,15 +1631,15 @@ espr_t esp_callback_function(esp_evt_t* event)
         wifi.restart = true;
         break;
       }
-//      case ESP_EVT_AP_IP_STA:
-//      {
-//        esp_ip_t *ip;
-//        ip = esp_evt_ap_ip_sta_get_ip(event);
-//        memset(mqtt_local_ip, 0, sizeof(mqtt_local_ip));
-//        Sprintf(mqtt_local_ip, "%d.%d.%d.%d", ip->ip[0], ip->ip[1], ip->ip[2], ip->ip[3]);
-//        PrintfLogsCRLF(CLR_GR"WiFi station got IP %s"CLR_DEF, mqtt_local_ip);
-//        break;
-//      }
+      case ESP_EVT_AP_IP_STA:
+      {
+        esp_ip_t *ip;
+        ip = esp_evt_ap_ip_sta_get_ip(event);
+        //memset(mqtt_local_ip, 0, sizeof(mqtt_local_ip));
+        PrintfLogsCRLF("%d.%d.%d.%d", ip->ip[0], ip->ip[1], ip->ip[2], ip->ip[3]);
+        //PrintfLogsCRLF(CLR_GR"WiFi station got IP %s"CLR_DEF, mqtt_local_ip);
+        break;
+      }
       case ESP_EVT_SERVER:
       {
         espr_t res = esp_evt_server_get_result(event);
