@@ -68,6 +68,7 @@ int ConsoleWiFi(microrl_t *microrl_ptr, int argc, const char * const *argv)
     {
         ConsoleClearScreen();
         PrintfConsoleCRLF("\tUPDATING WIFI");
+
         WiFiStop();
         res = WiFiStart(WIFI_MODE_ST);
 
@@ -90,6 +91,9 @@ int ConsoleWiFi(microrl_t *microrl_ptr, int argc, const char * const *argv)
     {
       ConsoleClearScreen();
       PrintfConsoleCRLF("\tINIT WIFI");
+      IoSystemClearRxQueue();
+      LogClearQueues();
+      IoSystemSetMode(IO_LOGS);
       WiFiInit();
     }
     else if (strcmp(argv[i], "ssid") == CONSOLE_MATCH)
@@ -147,7 +151,19 @@ int ConsoleWiFi(microrl_t *microrl_ptr, int argc, const char * const *argv)
       res = WiFiGetInfoAp();
 
       if (res != espOK)
-        return CONSOLE_OK;
+        return CONSOLE_ERROR;
+    }
+    else if (strcmp(argv[i], "ap") == CONSOLE_MATCH)
+    {
+      ConsoleClearScreen();
+      PrintfConsoleCRLF("\t"CLR_GR"OK, switching ESP8266 mode to "CLR_YL"AP"CLR_DEF);
+      IoSystemClearRxQueue();
+      LogClearQueues();
+      IoSystemSetMode(IO_LOGS);
+
+      WiFiStop();
+      WiFiStart(WIFI_MODE_AP);
+      return CONSOLE_OK;
     }
     else if (strcmp(argv[i], _CMD_BACK) == CONSOLE_MATCH)
     {
