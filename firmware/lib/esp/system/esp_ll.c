@@ -425,8 +425,18 @@ void UART5_IRQHandler(void)
   LL_USART_ClearFlag_NE(UART5);
   IndicationLedYellowBlink(3);
 
-  if (esp8266_update)
-    LL_USART_TransmitData8(UART4, LL_USART_ReceiveData8(UART5));
+//  if (esp8266_update)
+//  {
+//    LL_USART_TransmitData8(UART4, LL_USART_ReceiveData8(UART5));
+//  }
+//  else
+//  {
+//    if (usart_ll_mbox_id != NULL)
+//    {
+//      void* d = (void*)1;
+//      osMessageQueuePut(usart_ll_mbox_id, &d, 0, 0);
+//    }
+//  }
 
   if (usart_ll_mbox_id != NULL)
   {
@@ -446,13 +456,25 @@ void DMA1_Stream0_IRQHandler(void)
   IndicationLedGreenBlink(3);
 
   if (esp8266_update)
-    LL_USART_TransmitData8(UART4, LL_USART_ReceiveData8(UART5));
-
-  if (usart_ll_mbox_id != NULL)
   {
-    void* d = (void*)1;
-    osMessageQueuePut(usart_ll_mbox_id, &d, 0, 0);
+    LL_USART_TransmitData8(UART4, LL_USART_ReceiveData8(UART5));
   }
+  else
+  {
+    if (usart_ll_mbox_id != NULL)
+    {
+      void* d = (void*)1;
+      osMessageQueuePut(usart_ll_mbox_id, &d, 0, 0);
+    }
+  }
+//  if (esp8266_update)
+//    return;
+//
+//  if (usart_ll_mbox_id != NULL)
+//  {
+//    void* d = (void*)1;
+//    osMessageQueuePut(usart_ll_mbox_id, &d, 0, 0);
+//  }
 }
 #endif /* !ESP_USE_TX_RX_INTERRUPT */
 
