@@ -252,7 +252,7 @@ void IndicationLedButtonDoubleClick(void)
 
 
 /**
- * @brief          Error led function
+ * @brief          Red led function
  */
 void IndicationLedRed(void)
 {
@@ -264,6 +264,21 @@ void IndicationLedRed(void)
 }
 /******************************************************************************/
 
+
+
+
+/**
+ * @brief          LED RD blink n times
+ */
+void IndicationLedRedBlink(uint8_t blinks)
+{
+  for (uint8_t led_index = 0; led_index < N_LED; led_index++)
+  {
+    prvIndicationLedRedBlinkSetup(&mculed[led_index], led_index, blinks);
+    LedFunction(&mculed[led_index]);
+  }
+}
+/******************************************************************************/
 
 
 
