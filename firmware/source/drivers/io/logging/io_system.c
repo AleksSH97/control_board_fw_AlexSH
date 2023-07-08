@@ -14,6 +14,8 @@
 /******************************************************************************/
 #include "io_system.h"
 
+#include "stm32f4xx_ll_dma.h"
+
 #if    !WIFI_USE_LWESP
 #include "esp/system/esp_ll.h"
 #include "esp/esp_sta.h"
@@ -193,6 +195,9 @@ void IoSystemTxTask(void *argument)
     }
     else if (IoSystemGetMode() == IO_LOGS)
     {
+      if (esp8266_update)
+        continue;
+
       uint8_t msg = 0x00;
 
       if (!(IoSystemIsTxBufferFull()))
@@ -299,6 +304,7 @@ void prvIoLogsRxHandler(char rx)
 
     esp_ll_deinit(NULL);
     configure_uart(esp.ll.uart.baudrate);
+
     esp8266_update = true;
   }
 

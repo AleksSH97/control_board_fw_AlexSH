@@ -70,6 +70,9 @@ void UARTReceiveByte(USART_TypeDef *USARTx, struct uart *self)
  */
 void UARTSendByte(USART_TypeDef *USARTx, lwrb_t* buff)
 {
+  if (esp8266_update)
+    return;
+
   uint8_t msg = 0x00;
 
   lwrb_read(buff, &msg, sizeof(uint8_t));

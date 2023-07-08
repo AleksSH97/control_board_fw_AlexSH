@@ -25,6 +25,7 @@
 
 #include "log.h"
 #include "uart.h"
+#include "console.h"
 
 #include "stm32f4xx.h"
 #include "stm32f4xx_ll_bus.h"
