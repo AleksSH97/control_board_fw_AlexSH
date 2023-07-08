@@ -1,6 +1,6 @@
 /**
  * \file            esp_ll.c
- * \brief           Low-level communication with ESP device for STM32F405RG-VOLTS using DMA
+ * \brief           Low-level communication with ESP device for STM32F405RG using DMA
  */
 
 /*
@@ -358,64 +358,9 @@ esp_ll_deinit(esp_ll_t* ll)
   return espOK;
 }
 
-#if !ESP_USE_TX_RX_INTERRUPT
-void UART5_IRQHandler(void)
-{
-  uint8_t errors = 0;
-
-  if (LL_USART_IsActiveFlag_TC(UART5))
-  {
-    LL_USART_ClearFlag_TC(UART5);
-    LL_USART_DisableIT_TC(UART5);
-    osSemaphoreRelease(esptxSemaphoreHandle);
-  }
-
-  if (LL_USART_IsActiveFlag_ORE(UART5))
-  {
-    //Read DR register for ORE flag reset
-    LL_USART_ClearFlag_ORE(UART5);
-    ++errors;
-  }
-  if (LL_USART_IsActiveFlag_FE(UART5))
-  {
-    //Read DR register for FE flag reset
-    LL_USART_ClearFlag_FE(UART5);
-    ++errors;
-  }
-  if (LL_USART_IsActiveFlag_NE(UART5))
-  {
-    //Read DR register for NE flag reset
-    LL_USART_ClearFlag_NE(UART5);
-    ++errors;
-  }
-
-  if (errors != 0)
-  {
-    uint8_t rx = LL_USART_ReceiveData8(UART5);
-    PROJ_UNUSED(rx);
-  }
-
-  if (LL_USART_IsActiveFlag_RXNE(UART5))
-  {
-    if (esp8266_update)
-      LL_USART_TransmitData8(UART4, LL_USART_ReceiveData8(UART5));
-    else
-    {
-      uint8_t rx = LL_USART_ReceiveData8(UART5);
-
-#if !ESP_CFG_INPUT_USE_PROCESS
-      esp_input(&rx, 1);
-#endif
-
-#if ESP_CFG_INPUT_USE_PROCESS
-      esp_input_process(&rx, 1);
-#endif
-    }
-  }
-}
-#endif /* !ESP_USE_TX_RX_INTERRUPT */
-
-#if ESP_USE_TX_RX_INTERRUPT
+/**
+ * \brief           UART5 IRQ handler
+ */
 void UART5_IRQHandler(void)
 {
   LL_USART_ClearFlag_IDLE(UART5);
@@ -425,26 +370,19 @@ void UART5_IRQHandler(void)
   LL_USART_ClearFlag_NE(UART5);
   IndicationLedYellowBlink(3);
 
-//  if (esp8266_update)
-//  {
-//    LL_USART_TransmitData8(UART4, LL_USART_ReceiveData8(UART5));
-//  }
-//  else
-//  {
-//    if (usart_ll_mbox_id != NULL)
-//    {
-//      void* d = (void*)1;
-//      osMessageQueuePut(usart_ll_mbox_id, &d, 0, 0);
-//    }
-//  }
-
-  if (usart_ll_mbox_id != NULL)
+  if (esp8266_update)
   {
-    void* d = (void*)1;
-    osMessageQueuePut(usart_ll_mbox_id, &d, 0, 0);
+    LL_USART_TransmitData8(UART4, LL_USART_ReceiveData8(UART5));
+  }
+  else
+  {
+    if (usart_ll_mbox_id != NULL)
+    {
+      void* d = (void*)1;
+      osMessageQueuePut(usart_ll_mbox_id, &d, 0, 0);
+    }
   }
 }
-
 
 /**
  * \brief           UART DMA stream/channel handler
@@ -467,16 +405,6 @@ void DMA1_Stream0_IRQHandler(void)
       osMessageQueuePut(usart_ll_mbox_id, &d, 0, 0);
     }
   }
-//  if (esp8266_update)
-//    return;
-//
-//  if (usart_ll_mbox_id != NULL)
-//  {
-//    void* d = (void*)1;
-//    osMessageQueuePut(usart_ll_mbox_id, &d, 0, 0);
-//  }
 }
-#endif /* !ESP_USE_TX_RX_INTERRUPT */
 
 #endif /* !DOXYGEN */
-
