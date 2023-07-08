@@ -127,6 +127,7 @@ void ConsoleStart(void)
 {
   IoSystemClearRxQueue();
   LogClearQueues();
+  esp8266_update = false;
   ConsoleInit();
 }
 /******************************************************************************/
