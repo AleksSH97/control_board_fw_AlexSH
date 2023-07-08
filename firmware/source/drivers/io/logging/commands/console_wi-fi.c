@@ -16,6 +16,9 @@
 
 #include "console.h"
 #include "config.h"
+
+#include "stm32f4xx_ll_dma.h"
+
 #if    !WIFI_USE_LWESP
 #include "esp/system/esp_ll.h"
 #include "esp/esp_sta.h"
@@ -67,8 +70,8 @@ int ConsoleWiFi(microrl_t *microrl_ptr, int argc, const char * const *argv)
     if (strcmp(argv[i], "update") == CONSOLE_MATCH)
     {
         ConsoleClearScreen();
-        PrintfConsoleCRLF("\tUPDATING WIFI");
 
+        PrintfConsoleCRLF("\tUPDATING WIFI");
         WiFiStop();
         res = WiFiStart(WIFI_MODE_ST);
 
@@ -83,7 +86,9 @@ int ConsoleWiFi(microrl_t *microrl_ptr, int argc, const char * const *argv)
         esp_ll_deinit(NULL);
 #endif
         configure_uart(esp.ll.uart.baudrate);
-        //TODO PREPARE FOR ESP UPDATE IO UART
+
+        LL_USART_DisableDMAReq_RX(UART5);
+        LL_DMA_DisableStream(DMA1, LL_DMA_STREAM_0);
         esp8266_update = true;
 
     }
